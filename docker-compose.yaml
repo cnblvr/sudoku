@@ -1,0 +1,24 @@
+version: '2'
+
+services:
+
+# redis database service
+  redis:
+    build:
+      context: .
+      dockerfile: redis.Dockerfile
+    restart: always
+
+# application sudoku service
+  app:
+    build:
+      context: .
+      dockerfile: sudoku.Dockerfile
+    depends_on:
+      - redis
+    container_name: sudoku
+    restart: always
+    ports:
+      - "8080:8080"
+    env_file:
+      - dev.env
