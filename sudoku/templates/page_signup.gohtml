@@ -1,0 +1,13 @@
+{{define "page_signup"}}{{template "header" .Header}}
+<p>Signup</p>
+<form action="/signup" method="post">
+    <p><label for="username">username:</label></p>
+    <p><input id="username" name="_username" type="text" autocomplete="off" autofocus></p>
+    <p><label for="password">password:</label></p>
+    <p><input id="password" name="_password" type="password" autocomplete="off"></p>
+    {{with .Data.ErrorMessage}}<p style="color: red">{{.}}</p>
+    {{end}}<button type="submit">Sign up</button>
+</form>
+<p>Do you already have an account? <a href="/login">Log in</a>. Or <a href="/sudoku/play">play anonymously</a>.</p>
+<p>Back to the <a href="/">main page</a>.</p>
+{{template "footer" .Footer}}{{end}}

@@ -2,23 +2,9 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>sudoku</title>
-    <style>
-        .sudoku {
-            border-spacing: 0;
-            border-collapse: collapse;
-        }
-        .sudoku-cell {
-            border: 1px solid black;
-            box-sizing: border-box;
-            width: 9vh;
-            height: 9vh;
-            font-size: 8vh;
-            text-align: center;
-        }
-        .sudoku-cell {
-
-        }
-    </style>
+    <title>{{.Title}}</title>
+    <link rel="stylesheet" href="/css/reset.css">{{range $css := .Css}}
+    <link rel="stylesheet" href="/css/{{$css}}.css">{{end}}
 </head>
-<body>{{end}}
+<body>
+{{end}}

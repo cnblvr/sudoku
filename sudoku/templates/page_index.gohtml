@@ -1,0 +1,9 @@
+{{define "page_index"}}{{template "header" .Header}}
+<p>Hello{{if .Auth.IsAuthorized}}, {{.Auth.Username}}{{end}}. This is a Sudoku game.</p>
+<form action="/sudoku/play" method="get">
+    <button type="submit">Play{{if not .Auth.IsAuthorized}} as anonymous{{end}}</button>{{if not .Auth.IsAuthorized}} or <a href="/login">log in</a> or <a href="/signup">sign up</a>{{end}}
+</form>
+{{if .Auth.IsAuthorized}}<form action="/logout" method="get">
+    <button type="submit">Log out</button>
+</form>{{end}}
+{{template "footer" .Footer}}{{end}}

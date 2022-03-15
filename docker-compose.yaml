@@ -7,7 +7,10 @@ services:
     build:
       context: .
       dockerfile: redis.Dockerfile
+    container_name: sudoku_db
     restart: always
+    ports:
+      - "6379:6379"
 
 # application sudoku service
   app:

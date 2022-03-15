@@ -1,23 +1,24 @@
 package sudoku
 
 import (
+	"fmt"
 	"github.com/cnblvr/sudoku/sudoku/templates"
 	"github.com/rs/zerolog/log"
-	"html/template"
 	"net/http"
 )
 
-// HandleIndex renders index page.
+// HandleIndex is a handler of main page.
 func (srv *Service) HandleIndex(w http.ResponseWriter, r *http.Request) {
-	// Temporary parse templates
-	t, err := template.ParseFS(templates.Templates, append(templates.Common(), "index.gohtml")...)
-	if err != nil {
-		log.Error().Err(err).Msg("html/template.ParseFS failed")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	auth := getAuth(r)
+	args := templates.Args{
+		Header: templates.Header{
+			Title: fmt.Sprintf("index"),
+		},
+		Auth: auth,
 	}
-	if err := t.ExecuteTemplate(w, "index", struct{}{}); err != nil {
-		log.Error().Err(err).Msg("html/template.Template.ExecuteTemplate failed")
+	const tpl = "page_index"
+	if err := srv.templates.ExecuteTemplate(w, tpl, args); err != nil {
+		log.Error().Err(err).Str("template", tpl).Msg("failed to execute template")
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}

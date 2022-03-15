@@ -1,0 +1,55 @@
+#sudoku {
+    border: 3px solid black;
+    width: 81vh;
+    height: 81vh;
+    margin: 5vh auto 0 auto;
+    border-spacing: 0;
+    border-collapse: collapse;
+    table-layout: fixed;
+    font-size: x-large;
+    user-select: none;
+}
+
+@media (orientation: portrait) {
+    #sudoku {
+        width: 81vw;
+        height: 81vw;
+        margin-top: 5vw;
+    }
+}
+
+#sudoku tr {
+    width: 9vh;
+    height: 9vh;
+}
+
+@media (orientation: portrait) {
+    #sudoku tr {
+        width: 9vw;
+        height: 9vw;
+    }
+}
+
+#sudoku tr td {
+    border: 1px solid black;
+    text-align: center;
+    line-height: 9vh;
+}
+
+#sudoku tr td.active {
+    background: #ddd;
+}
+
+@media (orientation: portrait) {
+    #sudoku tr td {
+        line-height: 9vw;
+    }
+}
+
+#sudoku tr:nth-child(3n) {
+    border-bottom: 2px solid black;
+}
+
+#sudoku tr td:nth-child(3n) {
+    border-right: 2px solid black;
+}
