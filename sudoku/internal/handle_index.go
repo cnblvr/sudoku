@@ -2,6 +2,7 @@ package sudoku
 
 import (
 	"fmt"
+	"github.com/cnblvr/sudoku/model"
 	"github.com/cnblvr/sudoku/sudoku/templates"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -16,10 +17,17 @@ func (srv *Service) HandleIndex(w http.ResponseWriter, r *http.Request) {
 		},
 		Auth: auth,
 	}
-	const tpl = "page_index"
-	if err := srv.templates.ExecuteTemplate(w, tpl, args); err != nil {
-		log.Error().Err(err).Str("template", tpl).Msg("failed to execute template")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
+	if auth.IsAuthorized {
+		var err error
+		user, _, err := model.UserByID(srv.redis, auth.ID)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to get user")
+		}
+		args.User, err = user.UserInfo()
+		if err != nil {
+			log.Error().Err(err).Msg("failed to get user info")
+		}
 	}
+
+	srv.executeTemplate(w, "page_index", args)
 }

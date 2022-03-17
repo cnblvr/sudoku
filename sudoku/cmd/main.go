@@ -39,12 +39,14 @@ func main() {
 
 	// Main page
 	rPages.Path("/").Methods(http.MethodGet).HandlerFunc(srv.HandleIndex)
-	// Login handler
+	// Login page and handler
 	rPages.Path("/login").Methods(http.MethodGet, http.MethodPost).HandlerFunc(srv.HandleLogin)
 	// Logout handler
-	rAuth.Path("/logout").Methods(http.MethodGet).HandlerFunc(srv.HandleLogout)
+	rPages.Path("/logout").Methods(http.MethodGet).HandlerFunc(srv.HandleLogout)
 	// Signup page and handler
 	rPages.Path("/signup").Methods(http.MethodGet, http.MethodPost).HandlerFunc(srv.HandleSignup)
+	// User's info page and handler
+	rAuth.Path("/info").Methods(http.MethodGet, http.MethodPost).HandlerFunc(srv.HandleUserInfo)
 	// Puzzle create game page
 	rPages.Path("/sudoku/play").Methods(http.MethodGet).HandlerFunc(srv.HandleSudokuCreate)
 	// Puzzle page

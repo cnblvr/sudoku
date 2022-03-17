@@ -3,24 +3,34 @@ package sudoku
 import (
 	"fmt"
 	"github.com/cnblvr/sudoku/data"
-	"github.com/cnblvr/sudoku/sudoku/internal/db"
+	"github.com/cnblvr/sudoku/model"
 	"github.com/cnblvr/sudoku/sudoku/templates"
 	"github.com/rs/zerolog/log"
 	"net/http"
 	"strings"
 )
 
+const (
+	ErrorBadRequest                 = "Bad request."
+	ErrorInternalServerError        = "Internal server error."
+	ErrorUsernameOrPasswordNotValid = "Username or password not valid."
+	ErrorUsernameAlreadyTaken       = "Username already taken."
+	ErrorUsernameIsNotValid         = "Username is not valid."
+	ErrorPasswordIsNotValid         = "Password is not valid."
+	ErrorUsernamePasswordSame       = "Username must not be the same as password."
+	ErrorPasswordsMustMatch         = "Passwords must match."
+)
+
 // HandleLogin is a handler of login page.
 func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
-	auth := getAuth(r)
 
 	// If the user is already logged in, then redirect to the main page.
+	auth := getAuth(r)
 	if auth.IsAuthorized {
-		log.Debug().Str("redirect", data.EndpointIndex).Str("username", auth.Username).Msg("client already logged in")
+		log.Debug().Str("redirect", data.EndpointIndex).Int64("id", auth.ID).Msg("client already logged in")
 		redirect(data.EndpointIndex)
 		return
 	}
@@ -37,52 +47,54 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
-		err := func() error {
-			err := r.ParseForm()
-			if err != nil {
-				Data.ErrorMessage = "Bad Request"
+		Data.ErrorMessage = func() string {
+			if err := r.ParseForm(); err != nil {
 				log.Warn().Err(err).Msg("failed to parse form")
-				return err
+				return ErrorBadRequest
 			}
 			username, password := r.Form.Get("_username"), r.Form.Get("_password")
-			if err := data.ValidateUsername(username); err != nil {
-				Data.ErrorMessage = "username or password not valid"
-				return err
+			if err := ValidateUsername(username); err != nil {
+				return ErrorUsernameOrPasswordNotValid
 			}
-			user, isExists, err := db.GetUser(ctx, srv.redis, username)
+			user, isExists, err := model.UserByUsername(srv.redis, username)
 			if err != nil {
-				Data.ErrorMessage = "username or password not valid"
-				log.Error().Err(err).Msg("failed to GetUser")
-				return err
+				log.Error().Err(err).Msg("failed to get user")
+				return ErrorInternalServerError
 			}
 			if !isExists {
-				Data.ErrorMessage = "username or password not valid"
 				log.Debug().Err(err).Msg("username is not exists")
-				return fmt.Errorf("username is not exists")
+				return ErrorUsernameOrPasswordNotValid
 			}
 			auth = &data.Auth{
 				IsAuthorized: true,
-				Username:     strings.ToLower(username),
+				ID:           user.ID(),
 			}
-			ok, err := srv.verifyPassword(password, user.PasswordSalt, user.PasswordHash)
+			salt, err := user.PasswordSalt()
 			if err != nil {
-				Data.ErrorMessage = "Internal Server Error"
+				log.Debug().Err(err).Msg("failed to get salt")
+				return ErrorInternalServerError
+			}
+			hash, err := user.PasswordHash()
+			if err != nil {
+				log.Debug().Err(err).Msg("failed to get hash")
+				return ErrorInternalServerError
+			}
+			ok, err := srv.verifyPassword(password, salt, hash)
+			if err != nil {
 				log.Error().Err(err).Msg("failed to verify password")
-				return err
+				return ErrorInternalServerError
 			}
 			if !ok {
-				Data.ErrorMessage = "username or password not valid"
 				log.Error().Msg("password is not valid")
-				return fmt.Errorf("password is not valid")
+				return ErrorUsernameOrPasswordNotValid
 			}
 			if err := srv.createAuthCookie(w, auth); err != nil {
-				Data.ErrorMessage = "Internal Server Error"
 				log.Error().Err(err).Msg("failed to create 'auth' cookie")
-				return err
+				return ErrorInternalServerError
 			}
-			return nil
+			return ""
 		}()
-		if err == nil {
+		if Data.ErrorMessage == "" {
 			// the user is redirected to the main page if the authorization data is correct
 			log.Debug().Str("redirect", data.EndpointIndex).Msg("success POST HandleLogin")
 			redirect(data.EndpointIndex)
@@ -92,31 +104,25 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// render of page
 	args.Data = Data
-	const tpl = "page_login"
-	if err := srv.templates.ExecuteTemplate(w, tpl, args); err != nil {
-		log.Error().Err(err).Str("template", tpl).Msg("failed to execute template")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	srv.executeTemplate(w, "page_login", args)
 }
 
 // HandleLogout is a handler of logout.
 func (srv *Service) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	a := getAuth(r)
 	deleteAuthCookie(w)
-	log.Debug().Str("redirect", data.EndpointIndex).Str("username", a.Username).Msg("client logged out")
+	log.Debug().Str("redirect", data.EndpointIndex).Int64("id", a.ID).Msg("client logged out")
 	http.Redirect(w, r, data.EndpointIndex, http.StatusSeeOther)
 }
 
 func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
 	auth := getAuth(r)
 
 	if auth.IsAuthorized {
-		log.Debug().Str("redirect", data.EndpointIndex).Str("username", auth.Username).Msg("client already signed up")
+		log.Debug().Str("redirect", data.EndpointIndex).Int64("id", auth.ID).Msg("client already signed up")
 		redirect(data.EndpointIndex)
 		return
 	}
@@ -133,57 +139,71 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
-		err := func() error {
-			err := r.ParseForm()
-			if err != nil {
-				Data.ErrorMessage = "Bad Request"
+		Data.ErrorMessage = func() string {
+			if err := r.ParseForm(); err != nil {
 				log.Warn().Err(err).Msg("failed to parse form")
-				return err
+				return ErrorBadRequest
 			}
-			username, password := r.Form.Get("_username"), r.Form.Get("_password")
-			if err := data.ValidateUsername(username); err != nil {
-				Data.ErrorMessage = err.Error()
-				return err
+			username, password, repeatPassword := r.Form.Get("_username"), r.Form.Get("_password"), r.Form.Get("_repeat_password")
+			if err := ValidateUsername(username); err != nil {
+				log.Debug().Err(err).Send()
+				if fErr, ok := err.(ErrorFrontend); ok {
+					return fErr.Frontend
+				}
+				return ErrorUsernameIsNotValid
 			}
-			if err := data.ValidatePassword(password); err != nil {
-				Data.ErrorMessage = err.Error()
-				return err
+			if err := ValidatePassword(password); err != nil {
+				log.Debug().Err(err).Send()
+				if fErr, ok := err.(ErrorFrontend); ok {
+					return fErr.Frontend
+				}
+				return ErrorPasswordIsNotValid
 			}
-			if exists, err := db.IsExistsUser(ctx, srv.redis, username); err != nil {
-				Data.ErrorMessage = "Internal Server Error"
-				log.Error().Err(err).Msg("failed to IsExistsUser")
-				return err
-			} else if exists {
-				Data.ErrorMessage = "username already taken"
-				return fmt.Errorf("username already is registered")
+			if password != repeatPassword {
+				log.Debug().Msg("passwords must match")
+				return ErrorPasswordsMustMatch
 			}
-			user := data.User{
-				Username:     username,
-				PasswordSalt: generatePasswordSalt(),
+			if strings.ToLower(username) == strings.ToLower(password) {
+				log.Debug().Msg("username and password same")
+				return ErrorUsernamePasswordSame
+			}
+			if isVacant, err := model.IsUsernameVacant(srv.redis, username); err != nil {
+				log.Error().Err(err).Msg("failed to check if username is vacant")
+				return ErrorInternalServerError
+			} else if !isVacant {
+				log.Debug().Msg("username is not vacant")
+				return ErrorUsernameAlreadyTaken
+			}
+			salt := generatePasswordSalt()
+			hash, err := srv.hashPassword(password, salt)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to hash password")
+				return ErrorInternalServerError
+			}
+			user, err := model.NewUser(srv.redis, username)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to create user")
+				return ErrorInternalServerError
 			}
 			auth = &data.Auth{
 				IsAuthorized: true,
-				Username:     strings.ToLower(username),
+				ID:           user.ID(),
 			}
-			user.PasswordHash, err = srv.hashPassword(password, user.PasswordSalt)
-			if err != nil {
-				Data.ErrorMessage = "Internal Server Error"
-				log.Error().Err(err).Msg("failed to hash password")
-				return err
+			if err := user.SetPasswordSalt(salt); err != nil {
+				log.Error().Err(err).Msg("failed to set salt")
+				return ErrorInternalServerError
 			}
-			if err := db.CreateUser(ctx, srv.redis, user); err != nil {
-				Data.ErrorMessage = "Internal Server Error"
-				log.Error().Err(err).Msg("failed to create user")
-				return err
+			if err := user.SetPasswordHash(hash); err != nil {
+				log.Error().Err(err).Msg("failed to set hash")
+				return ErrorInternalServerError
 			}
 			if err := srv.createAuthCookie(w, auth); err != nil {
-				Data.ErrorMessage = "Internal Server Error"
 				log.Error().Err(err).Msg("failed to create 'auth' cookie")
-				return err
+				return ErrorInternalServerError
 			}
-			return nil
+			return ""
 		}()
-		if err == nil {
+		if Data.ErrorMessage == "" {
 			// the user is redirected to the main page if the authorization data is correct
 			log.Debug().Str("redirect", data.EndpointIndex).Msg("success POST HandleSignup")
 			redirect(data.EndpointIndex)
@@ -193,10 +213,5 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 
 	// render of page
 	args.Data = Data
-	const tpl = "page_signup"
-	if err := srv.templates.ExecuteTemplate(w, tpl, args); err != nil {
-		log.Error().Err(err).Str("template", tpl).Msg("failed to execute template")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	srv.executeTemplate(w, "page_signup", args)
 }

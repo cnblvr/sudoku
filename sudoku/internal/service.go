@@ -1,20 +1,21 @@
 package sudoku
 
 import (
-	"context"
 	"encoding/base64"
+	"fmt"
 	"github.com/cnblvr/sudoku/sudoku/templates"
-	"github.com/go-redis/redis/v8"
+	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/securecookie"
 	"github.com/rs/zerolog/log"
 	"html/template"
+	"net/http"
 	"os"
 )
 
 // Service is a service structure.
 type Service struct {
 	// Connection of database
-	redis *redis.Client
+	redis redis.Conn // TODO: stop redis and test
 	// Storage for templates
 	templates *template.Template
 	// Object to generate hash from password.
@@ -60,15 +61,32 @@ func NewService() (*Service, error) {
 	}
 
 	// Connect to redis database
-	srv.redis = redis.NewClient(&redis.Options{
-		Addr:     "redis:6379", // todo port from env vars
-		Password: os.Getenv("REDIS_PASSWORD"),
-		DB:       0, // todo index of database from env vars
-	})
-	if _, err := srv.redis.Ping(context.TODO()).Result(); err != nil {
+	conn, err := redis.Dial(
+		"tcp", "redis:6379", // todo port from env vars
+		redis.DialPassword(os.Getenv("REDIS_PASSWORD")),
+		redis.DialDatabase(0), // todo index of database from env vars
+	)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to connect to redis")
+	}
+	srv.redis = conn
+	if pong, err := srv.redis.Do("PING"); err != nil {
 		log.Error().Err(err).Msg("failed to ping to redis database")
 		return nil, err
+	} else if pong != "PONG" {
+		log.Error().Msg("ping, not pong")
+		return nil, fmt.Errorf("redis ping error")
 	}
 
 	return srv, nil
+}
+
+func (srv *Service) executeTemplate(w http.ResponseWriter, name string, args templates.Args) {
+	err := srv.templates.ExecuteTemplate(w, name, args)
+	if err != nil {
+		log.Error().Err(err).Str("template", name).Msg("failed to execute template")
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	return
 }

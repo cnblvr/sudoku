@@ -9,6 +9,8 @@ const (
 	EndpointSignup = "/signup"
 	// EndpointLogout is a path to the logout handler.
 	EndpointLogout = "/logout"
+	// EndpointUserInfo is a path to the user's info page.
+	EndpointUserInfo = "/info"
 	// EndpointSudokuPlay is a path to the puzzle generator page/handler.
 	EndpointSudokuPlay = "/sudoku/play"
 )

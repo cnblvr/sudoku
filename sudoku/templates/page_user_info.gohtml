@@ -1,0 +1,11 @@
+{{define "page_user_info"}}{{template "header" .Header}}{{$user := .User}}{{$data := .Data}}
+<p>User's information</p>
+<form action="/info" method="post">
+    <p><span>username:</span> <span>{{$user.Username}}</span></p>
+    <p><label for="name">name:</label></p>
+    <p><input id="name" name="_name" type="text" value="{{$user.Name}}" autofocus></p>
+    {{with $data.ErrorMessage}}<p style="color: red">{{.}}</p>
+    {{end}}<button type="submit">Change</button>
+</form>
+<p>Back to the <a href="/">main page</a>.</p>
+{{template "footer" .Footer}}{{end}}

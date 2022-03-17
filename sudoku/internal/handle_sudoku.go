@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"github.com/cnblvr/sudoku/sudoku/static"
 	"github.com/cnblvr/sudoku/sudoku/templates"
-	"github.com/rs/zerolog/log"
 	"net/http"
 )
 
@@ -19,9 +18,5 @@ func (srv *Service) HandleSudoku(w http.ResponseWriter, r *http.Request) {
 			Js: []string{static.JsSudoku},
 		},
 	}
-	if err := srv.templates.ExecuteTemplate(w, "page_sudoku", args); err != nil {
-		log.Error().Err(err).Msg("html/template.Template.ExecuteTemplate failed")
-		w.WriteHeader(http.StatusInternalServerError)
-		return
-	}
+	srv.executeTemplate(w, "page_sudoku", args)
 }
