@@ -2,20 +2,21 @@ package sudoku
 
 import (
 	"encoding/base64"
-	"fmt"
 	"github.com/cnblvr/sudoku/sudoku/templates"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/securecookie"
+	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"html/template"
 	"net/http"
 	"os"
+	"time"
 )
 
 // Service is a service structure.
 type Service struct {
 	// Connection of database
-	redis redis.Conn // TODO: stop redis and test
+	redis *redis.Pool
 	// Storage for templates
 	templates *template.Template
 	// Object to generate hash from password.
@@ -23,6 +24,8 @@ type Service struct {
 	securecookie *securecookie.SecureCookie
 	// Pepper for password hashing
 	passwordPepper []byte
+	// gorilla/websocket object
+	upgrader websocket.Upgrader
 }
 
 // NewService initialize the service sudoku.
@@ -61,22 +64,34 @@ func NewService() (*Service, error) {
 	}
 
 	// Connect to redis database
-	conn, err := redis.Dial(
-		"tcp", "redis:6379", // todo port from env vars
-		redis.DialPassword(os.Getenv("REDIS_PASSWORD")),
-		redis.DialDatabase(0), // todo index of database from env vars
-	)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to connect to redis")
+	srv.redis = &redis.Pool{
+		Dial: func() (redis.Conn, error) {
+			return redis.Dial(
+				"tcp", "redis:6379", // todo port from env vars
+				redis.DialPassword(os.Getenv("REDIS_PASSWORD")),
+				redis.DialDatabase(0), // todo index of database from env vars
+			)
+		},
+		TestOnBorrow: func(c redis.Conn, t time.Time) error {
+			if time.Since(t) < time.Second*10 {
+				return nil
+			}
+			_, err := c.Do("PING")
+			return err
+		},
+		MaxIdle:     3,
+		MaxActive:   0,
+		IdleTimeout: time.Minute,
 	}
-	srv.redis = conn
-	if pong, err := srv.redis.Do("PING"); err != nil {
+	conn := srv.redis.Get()
+	defer conn.Close()
+	if _, err := conn.Do("PING"); err != nil {
 		log.Error().Err(err).Msg("failed to ping to redis database")
 		return nil, err
-	} else if pong != "PONG" {
-		log.Error().Msg("ping, not pong")
-		return nil, fmt.Errorf("redis ping error")
 	}
+
+	// init upgrader
+	srv.upgrader = websocket.Upgrader{}
 
 	return srv, nil
 }

@@ -48,6 +48,8 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
 		Data.ErrorMessage = func() string {
+			redis := srv.redis.Get()
+			defer redis.Close()
 			if err := r.ParseForm(); err != nil {
 				log.Warn().Err(err).Msg("failed to parse form")
 				return ErrorBadRequest
@@ -56,7 +58,7 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			if err := ValidateUsername(username); err != nil {
 				return ErrorUsernameOrPasswordNotValid
 			}
-			user, isExists, err := model.UserByUsername(srv.redis, username)
+			user, isExists, err := model.UserByUsername(redis, username)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to get user")
 				return ErrorInternalServerError
@@ -140,6 +142,8 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
 		Data.ErrorMessage = func() string {
+			redis := srv.redis.Get()
+			defer redis.Close()
 			if err := r.ParseForm(); err != nil {
 				log.Warn().Err(err).Msg("failed to parse form")
 				return ErrorBadRequest
@@ -167,7 +171,7 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 				log.Debug().Msg("username and password same")
 				return ErrorUsernamePasswordSame
 			}
-			if isVacant, err := model.IsUsernameVacant(srv.redis, username); err != nil {
+			if isVacant, err := model.IsUsernameVacant(redis, username); err != nil {
 				log.Error().Err(err).Msg("failed to check if username is vacant")
 				return ErrorInternalServerError
 			} else if !isVacant {
@@ -180,7 +184,7 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 				log.Error().Err(err).Msg("failed to hash password")
 				return ErrorInternalServerError
 			}
-			user, err := model.NewUser(srv.redis, username)
+			user, err := model.NewUser(redis, username)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to create user")
 				return ErrorInternalServerError

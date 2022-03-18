@@ -41,6 +41,8 @@ func (srv *Service) MiddlewareCookies(next http.Handler) http.Handler {
 func (srv *Service) MiddlewareMustBeAuthorized(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := log.With().Str("path", r.URL.Path).Logger()
+		redis := srv.redis.Get()
+		defer redis.Close() // todo on entire iteration request. in context
 		ctx := r.Context()
 		redirect := func(endpoint string) {
 			deleteAuthCookie(w)
@@ -54,7 +56,7 @@ func (srv *Service) MiddlewareMustBeAuthorized(next http.Handler) http.Handler {
 			return
 		}
 
-		user, isExists, err := model.UserByID(srv.redis, a.ID)
+		user, isExists, err := model.UserByID(redis, a.ID)
 		if err != nil {
 			log.Debug().Str("redirect", data.EndpointIndex).Msg("failed to get user")
 			redirect(data.EndpointIndex)

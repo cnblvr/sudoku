@@ -11,6 +11,8 @@ import (
 // HandleIndex is a handler of main page.
 func (srv *Service) HandleIndex(w http.ResponseWriter, r *http.Request) {
 	auth := getAuth(r)
+	redis := srv.redis.Get()
+	defer redis.Close()
 	args := templates.Args{
 		Header: templates.Header{
 			Title: fmt.Sprintf("index"),
@@ -19,7 +21,7 @@ func (srv *Service) HandleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 	if auth.IsAuthorized {
 		var err error
-		user, _, err := model.UserByID(srv.redis, auth.ID)
+		user, _, err := model.UserByID(redis, auth.ID)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to get user")
 		}

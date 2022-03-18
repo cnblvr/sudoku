@@ -53,7 +53,7 @@ func main() {
 	rPages.Path("/sudoku/{game_id}").Methods(http.MethodGet).HandlerFunc(srv.HandleSudoku)
 
 	// Websocket handler
-	//rPages.Path("/ws").Methods(http.MethodGet).HandlerFunc(srv.HandleWebsocket)
+	rPages.Path("/ws").Methods(http.MethodGet).HandlerFunc(srv.HandleWebsocket)
 
 	if err := http.ListenAndServe(":8080", r); err != nil {
 		log.Fatal().Err(err).Msg("http.ListenAndServe failed")
