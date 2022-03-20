@@ -1,9 +1,26 @@
 package data
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 )
+
+type Sudoku interface {
+	Board() SudokuBoard
+	Puzzle() SudokuPuzzle
+}
+
+type SudokuBoard interface {
+	String() string
+}
+
+type SudokuPuzzle interface {
+	String() string
+	FindUserErrors() []Point
+	FindErrors(target SudokuPuzzle) []Point
+	In(point Point) int8
+}
 
 // DirectionType is a direction of line/"big" line/some kind of field change.
 type DirectionType uint8
@@ -25,6 +42,10 @@ const (
 
 type Point struct {
 	Row, Col int
+}
+
+func (p Point) MarshalJSON() ([]byte, error) {
+	return json.Marshal(p.String())
 }
 
 func (p Point) InSameBox(points ...Point) bool {

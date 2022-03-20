@@ -35,19 +35,13 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var Data struct {
+	var d struct {
 		ErrorMessage string
-	}
-
-	args := templates.Args{
-		Header: templates.Header{
-			Title: fmt.Sprintf("login"),
-		},
 	}
 
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
-		Data.ErrorMessage = func() string {
+		d.ErrorMessage = func() string {
 			redis := srv.redis.Get()
 			defer redis.Close()
 			if err := r.ParseForm(); err != nil {
@@ -96,7 +90,7 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			}
 			return ""
 		}()
-		if Data.ErrorMessage == "" {
+		if d.ErrorMessage == "" {
 			// the user is redirected to the main page if the authorization data is correct
 			log.Debug().Str("redirect", data.EndpointIndex).Msg("success POST HandleLogin")
 			redirect(data.EndpointIndex)
@@ -105,7 +99,12 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// render of page
-	args.Data = Data
+	args := templates.Args{
+		Header: templates.Header{
+			Title: fmt.Sprintf("login"),
+		},
+		Data: d,
+	}
 	srv.executeTemplate(w, "page_login", args)
 }
 
@@ -129,19 +128,13 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var Data struct {
+	var d struct {
 		ErrorMessage string
-	}
-
-	args := templates.Args{
-		Header: templates.Header{
-			Title: fmt.Sprintf("signup"),
-		},
 	}
 
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
-		Data.ErrorMessage = func() string {
+		d.ErrorMessage = func() string {
 			redis := srv.redis.Get()
 			defer redis.Close()
 			if err := r.ParseForm(); err != nil {
@@ -207,7 +200,7 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 			}
 			return ""
 		}()
-		if Data.ErrorMessage == "" {
+		if d.ErrorMessage == "" {
 			// the user is redirected to the main page if the authorization data is correct
 			log.Debug().Str("redirect", data.EndpointIndex).Msg("success POST HandleSignup")
 			redirect(data.EndpointIndex)
@@ -216,6 +209,11 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// render of page
-	args.Data = Data
+	args := templates.Args{
+		Header: templates.Header{
+			Title: fmt.Sprintf("signup"),
+		},
+		Data: d,
+	}
 	srv.executeTemplate(w, "page_signup", args)
 }

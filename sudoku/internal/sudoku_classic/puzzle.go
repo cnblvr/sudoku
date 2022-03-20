@@ -6,6 +6,10 @@ import (
 
 type sudokuPuzzle [][]int8
 
+func PuzzleFromString(str string) data.SudokuPuzzle {
+	return data.SudokuPuzzle(sudokuPuzzleFromString(str))
+}
+
 func sudokuPuzzleFromString(str string) sudokuPuzzle {
 	out := make(sudokuPuzzle, 9)
 	for row := 0; row < 9; row++ {
@@ -205,6 +209,56 @@ func (p sudokuPuzzle) clone() sudokuPuzzle {
 // Get the puzzle for user as a string of 81 characters, where the absence of a number is indicated by zero.
 func (p sudokuPuzzle) String() string {
 	return sudokuString(p)
+}
+
+func (p sudokuPuzzle) FindUserErrors() (listErrors []data.Point) {
+	p.forEach(func(point1 data.Point, value1 int8, _ *bool) {
+		if value1 == 0 {
+			return
+		}
+		var point1Errors []data.Point
+		findErrs := func(point2 data.Point, value2 int8, _ *bool) {
+			if value1 == value2 {
+				point1Errors = append(point1Errors, point2)
+			}
+		}
+		p.forEachInRow(point1.Row, findErrs, point1.Col)
+		p.forEachInCol(point1.Col, findErrs, point1.Row)
+		p.forEachInBox(point1, findErrs, point1)
+		if len(point1Errors) > 0 {
+			point1Errors = append(point1Errors, point1)
+			listErrors = append(listErrors, point1Errors...)
+		}
+	})
+	return
+}
+
+func (p sudokuPuzzle) FindErrors(target data.SudokuPuzzle) (listErrors []data.Point) {
+	p.forEach(func(point1 data.Point, value1 int8, _ *bool) {
+		if value1 == 0 {
+			return
+		}
+		userValue := target.In(point1)
+		if userValue == 0 {
+			return
+		}
+		if userValue != value1 {
+			findErrs := func(point2 data.Point, value2 int8, _ *bool) {
+				if value2 == userValue {
+					listErrors = append(listErrors, point2)
+				}
+			}
+			p.forEachInRow(point1.Row, findErrs, point1.Col)
+			p.forEachInCol(point1.Col, findErrs, point1.Row)
+			p.forEachInBox(point1, findErrs, point1)
+			listErrors = append(listErrors, point1)
+		}
+	})
+	return
+}
+
+func (p sudokuPuzzle) In(point data.Point) int8 {
+	return p[point.Row][point.Col]
 }
 
 func (p sudokuPuzzle) debug() string {

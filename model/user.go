@@ -47,6 +47,7 @@ func UserByUsername(conn redis.Conn, username string) (User, bool, error) {
 }
 
 func NewUser(conn redis.Conn, username string) (User, error) {
+	// TODO transactions
 	isVacant, err := IsUsernameVacant(conn, username)
 	if err != nil {
 		return User{}, err
@@ -118,6 +119,10 @@ func (u User) SetUserInfo(info data.UserInfo) error {
 // ID returns user's id.
 func (u User) ID() int64 {
 	return u.id
+}
+
+func (u User) IsNull() bool {
+	return u.id <= 0
 }
 
 // Username returns the username.

@@ -1,7 +1,9 @@
 let ws = undefined;
+let sessionID = undefined;
+let sudoku = undefined;
 
 document.addEventListener('DOMContentLoaded', () => {
-    let sudoku = document.querySelector('#sudoku');
+    sudoku = document.querySelector('#sudoku');
 
     // Creating board in table element.
     for (let row = 0; row < 9; row++) {
@@ -15,8 +17,8 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Creating event handlers for all cells.
-    document.querySelectorAll('#sudoku tr td').forEach((td) => {
-        td.addEventListener("mouseup", function(e) {
+    sudoku.querySelectorAll('tr td').forEach((td) => {
+        td.addEventListener('mouseup', function(e) {
             setActive(td);
         });
     });
@@ -26,6 +28,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.defaultPrevented) {
             return;
         }
+        let isWin = sudoku.classList.contains('win');
+        let changed = false;
         let td = document.querySelector('#sudoku tr td.active');
         switch (e.code) {
             case 'ArrowUp':    setActive(td, 'up');    break;
@@ -35,11 +39,55 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'Digit0':
             case 'Numpad0':
             case 'Space':
-                if (td) td.textContent = '';
+            case 'Backspace':
+                if (!isWin && td && !td.classList.contains('hint')) {
+                    td.textContent = '';
+                    changed = true;
+                }
         }
-        if (td && '1' <= e.key && e.key <= '9') {
+        if (!isWin && td && '1' <= e.key && e.key <= '9' && !td.classList.contains('hint')) {
             td.textContent = e.key;
+            changed = true;
         }
+        if (changed) apiMakeStep();
+    });
+
+    sudoku.addEventListener('api_getPuzzle', (e) => {
+        let body = e.detail.body;
+        sudoku.querySelectorAll('tr').forEach((tr, row) => {
+            tr.querySelectorAll('td').forEach((td, col) => {
+                td.textContent = '';
+                let d = body.puzzle[row*9+col];
+                if ('1' <= d && d <= '9') {
+                    td.textContent = d;
+                    td.classList.add('hint');
+                }
+            });
+        });
+    });
+
+    sudoku.addEventListener('api_makeStep', (e) => {
+        let body = e.detail.body;
+        sudoku.querySelectorAll('tr td').forEach((td) => {
+            td.classList.remove('error');
+        });
+        if (body.win) {
+            sudoku.classList.add('win');
+            return;
+        }
+        if (!body.errors) {
+            return;
+        }
+        body.errors = parsePoints(body.errors);
+        sudoku.querySelectorAll('tr').forEach((tr, row) => {
+            tr.querySelectorAll('td').forEach((td, col) => {
+                body.errors.forEach((p) => {
+                    if (p.row === row && p.col === col) {
+                        td.classList.add('error');
+                    }
+                });
+            });
+        });
     });
 
     // websocket
@@ -50,11 +98,18 @@ document.addEventListener('DOMContentLoaded', () => {
     //     }
     //     ws.send(JSON.stringify({method: 'health', echo: ''+Math.floor(Math.random() * 1e9)}));
     // }, 10000);
+
+    sudoku.addEventListener('apiReady', () => {
+        sessionID = document.querySelector('#_session').textContent;
+        wsApi('getPuzzle', {
+            sessionID: sessionID,
+        });
+    }, {once: true});
 }, false);
 
 let setActive = (td, dir) => {
     if (!td) {
-        td = document.querySelectorAll('#sudoku tr').item(9/2).querySelectorAll('td').item(9/2);
+        td = sudoku.querySelectorAll('tr').item(9/2).querySelectorAll('td').item(9/2);
         dir = undefined;
         if (!td) return;
     }
@@ -97,20 +152,60 @@ let connectWs = () => {
     ws = new WebSocket('ws://'+location.host+'/ws');
     ws.onopen = (e) => {
         console.log('ws: open connection');
+        sudoku.dispatchEvent(new CustomEvent('apiReady'));
     }
     ws.onclose = (e) => {
         console.log('ws: close connection');
         ws = undefined;
         // reconnect
-        setTimeout(() => {
-            connectWs();
-        }, 3000);
+        setTimeout(connectWs, 3000);
     }
     ws.onmessage = (e) => {
-        console.log('ws: new message: ', e.data);
+        console.log('ws: receive message:', e.data);
+        let msg = JSON.parse(e.data);
+        if (!msg.method) return;
+        if (msg.error) {
+            console.error('api', msg.method, 'error:', msg.error);
+            return;
+        }
+        sudoku.dispatchEvent(new CustomEvent('api_'+msg.method, {detail: msg}));
     }
     ws.onerror = (e) => {
-        console.error('ws: error('+e.code+'): ', e.reason, e);
+        console.error('ws: error '+e.code+':', e.reason, e);
         ws.close();
     }
+}
+
+let apiMakeStep = () => {
+    let state = '';
+    sudoku.querySelectorAll('tr td').forEach((td) => {
+        let val = td.textContent;
+        if (val === '') val = '.';
+        state += val;
+    });
+    wsApi('makeStep', {
+        sessionID: sessionID,
+        state: state,
+    })
+}
+
+let wsApi = (method, body) => {
+    if (!body || !method) return;
+    let msg = JSON.stringify({
+        method: method,
+        body: body,
+    });
+    console.log('ws: send message:', msg);
+    ws.send(msg);
+}
+
+let parsePoints = (points) => {
+    let out = [];
+    points.forEach((p) => {
+        out = out.concat([{
+            row: p[0].charCodeAt(0)-'a'.charCodeAt(0),
+            col: parseInt(p[1])-1,
+        }]);
+    });
+    return out;
 }

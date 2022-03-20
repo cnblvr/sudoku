@@ -26,6 +26,7 @@ import (
 //  - the lines [1-3], [4-6], [7-9], [a-c], [d-f], [g-i] are "big" lines;
 //  - box 3x3 is a matrix with 3 rows and 3 columns, for example:
 //    [[a1,a2,a3],[b1,b2,b3],[c1,c2,c3]].
+// TODO: combine sudokuPuzzle and sudokuBoard
 type sudokuBoard [][]int8
 
 // Swap of lines within one "big" line.

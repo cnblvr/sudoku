@@ -50,7 +50,7 @@ func main() {
 	// Puzzle create game page
 	rPages.Path("/sudoku/play").Methods(http.MethodGet).HandlerFunc(srv.HandleSudokuCreate)
 	// Puzzle page
-	rPages.Path("/sudoku/{game_id}").Methods(http.MethodGet).HandlerFunc(srv.HandleSudoku)
+	rPages.Path("/sudoku/{session_id}").Methods(http.MethodGet).HandlerFunc(srv.HandleSudoku)
 
 	// Websocket handler
 	rPages.Path("/ws").Methods(http.MethodGet).HandlerFunc(srv.HandleWebsocket)

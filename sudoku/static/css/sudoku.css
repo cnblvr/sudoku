@@ -10,6 +10,11 @@
     user-select: none;
 }
 
+#sudoku.win {
+    border-color: #009900;
+    box-shadow: 0 0 14px 9px #090;
+}
+
 @media (orientation: portrait) {
     #sudoku {
         width: 81vw;
@@ -37,7 +42,15 @@
 }
 
 #sudoku tr td.active {
-    background: #ddd;
+    background: #d0d0d0 !important;
+}
+
+#sudoku tr td.hint {
+    background: #f4f4f4;
+}
+
+#sudoku tr td.error {
+    color: #ff0000;
 }
 
 @media (orientation: portrait) {

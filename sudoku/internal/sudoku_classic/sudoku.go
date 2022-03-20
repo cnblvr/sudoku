@@ -18,9 +18,17 @@ type Sudoku struct {
 	puzzle sudokuPuzzle
 }
 
+func (s Sudoku) Board() data.SudokuBoard {
+	return s.board
+}
+
+func (s Sudoku) Puzzle() data.SudokuPuzzle {
+	return s.puzzle
+}
+
 // NewSudoku creates a new puzzle and removes some hints depending on the level.
 // seed is used to create a unique puzzle.
-func NewSudoku(seed int64) *Sudoku {
+func NewSudoku(seed int64) data.Sudoku {
 	s := Sudoku{}
 	s.seed = seed
 	// randomizer for full puzzle generation
@@ -167,7 +175,11 @@ func neighborLine(lineIdx int, neighbor int) int {
 func sudokuString(s [][]int8) (out string) {
 	for row := 0; row < 9; row++ {
 		for col := 0; col < 9; col++ {
-			out += strconv.Itoa(int(s[row][col]))
+			val := strconv.Itoa(int(s[row][col]))
+			if val == "0" {
+				val = "."
+			}
+			out += val
 		}
 	}
 	return

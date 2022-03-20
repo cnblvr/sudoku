@@ -14,7 +14,7 @@ func (srv *Service) HandleUserInfo(w http.ResponseWriter, r *http.Request) {
 	}
 	user := getUser(r)
 
-	var Data struct {
+	var d struct {
 		ErrorMessage string
 	}
 
@@ -24,16 +24,10 @@ func (srv *Service) HandleUserInfo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 		return
 	}
-	args := templates.Args{
-		Header: templates.Header{
-			Title: fmt.Sprintf("user's info"),
-		},
-		User: info,
-	}
 
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
-		Data.ErrorMessage = func() string {
+		d.ErrorMessage = func() string {
 			if err := r.ParseForm(); err != nil {
 				log.Warn().Err(err).Msg("failed to parse form")
 				return ErrorBadRequest
@@ -45,7 +39,7 @@ func (srv *Service) HandleUserInfo(w http.ResponseWriter, r *http.Request) {
 			}
 			return ""
 		}()
-		if Data.ErrorMessage == "" {
+		if d.ErrorMessage == "" {
 			log.Debug().Str("redirect", data.EndpointUserInfo).Msg("success POST HandleUserInfo")
 			redirect(data.EndpointUserInfo)
 			return
@@ -53,6 +47,12 @@ func (srv *Service) HandleUserInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// render of page
-	args.Data = Data
+	args := templates.Args{
+		Header: templates.Header{
+			Title: fmt.Sprintf("user's info"),
+		},
+		User: info,
+		Data: d,
+	}
 	srv.executeTemplate(w, "page_user_info", args)
 }
