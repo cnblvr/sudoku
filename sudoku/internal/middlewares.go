@@ -3,7 +3,7 @@ package sudoku
 import (
 	"context"
 	"github.com/cnblvr/sudoku/data"
-	"github.com/cnblvr/sudoku/model"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"net/http"
 )
@@ -41,8 +41,6 @@ func (srv *Service) MiddlewareCookies(next http.Handler) http.Handler {
 func (srv *Service) MiddlewareMustBeAuthorized(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log := log.With().Str("path", r.URL.Path).Logger()
-		redis := srv.redis.Get()
-		defer redis.Close() // todo on entire iteration request. in context
 		ctx := r.Context()
 		redirect := func(endpoint string) {
 			deleteAuthCookie(w)
@@ -56,18 +54,18 @@ func (srv *Service) MiddlewareMustBeAuthorized(next http.Handler) http.Handler {
 			return
 		}
 
-		user, isExists, err := model.UserByID(redis, a.ID)
+		user, err := srv.userRepository.GetUserByID(ctx, a.ID)
 		if err != nil {
+			if errors.Is(err, data.ErrUserNotFound) {
+				log.Debug().Str("redirect", data.EndpointLogout).Msg("user not found")
+				redirect(data.EndpointLogout)
+				return
+			}
 			log.Debug().Str("redirect", data.EndpointIndex).Msg("failed to get user")
 			redirect(data.EndpointIndex)
 			return
 		}
-		if !isExists {
-			log.Debug().Str("redirect", data.EndpointLogout).Msg("user not found")
-			redirect(data.EndpointLogout)
-			return
-		}
-		ctx = context.WithValue(ctx, "user", &user)
+		ctx = context.WithValue(ctx, "user", user)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 		return
@@ -79,6 +77,6 @@ func getAuth(r *http.Request) *data.Auth {
 	return r.Context().Value("auth").(*data.Auth)
 }
 
-func getUser(r *http.Request) *model.User {
-	return r.Context().Value("user").(*model.User)
+func getUser(r *http.Request) *data.User {
+	return r.Context().Value("user").(*data.User)
 }

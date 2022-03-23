@@ -2,6 +2,8 @@ package sudoku
 
 import (
 	"encoding/base64"
+	"github.com/cnblvr/sudoku/data"
+	"github.com/cnblvr/sudoku/repository"
 	"github.com/cnblvr/sudoku/sudoku/templates"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/securecookie"
@@ -15,8 +17,7 @@ import (
 
 // Service is a service structure.
 type Service struct {
-	// Connection of database
-	redis *redis.Pool
+	userRepository data.UserRepository
 	// Storage for templates
 	templates *template.Template
 	// Object to generate hash from password.
@@ -64,7 +65,7 @@ func NewService() (*Service, error) {
 	}
 
 	// Connect to redis database
-	srv.redis = &redis.Pool{
+	redisPool := &redis.Pool{
 		Dial: func() (redis.Conn, error) {
 			return redis.Dial(
 				"tcp", "redis:6379", // todo port from env vars
@@ -83,12 +84,14 @@ func NewService() (*Service, error) {
 		MaxActive:   0,
 		IdleTimeout: time.Minute,
 	}
-	conn := srv.redis.Get()
+	conn := redisPool.Get()
 	defer conn.Close()
 	if _, err := conn.Do("PING"); err != nil {
 		log.Error().Err(err).Msg("failed to ping to redis database")
 		return nil, err
 	}
+	repo := repository.New(redisPool)
+	srv.userRepository = repo
 
 	// init upgrader
 	srv.upgrader = websocket.Upgrader{}

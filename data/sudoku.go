@@ -1,26 +1,30 @@
 package data
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strconv"
 )
 
-type Sudoku interface {
-	Board() SudokuBoard
-	Puzzle() SudokuPuzzle
+type SudokuRepository interface {
+	CreateSudoku(ctx context.Context, seed int64, puzzle, solution string) (*Sudoku, error)
+	GetSudokuByID(ctx context.Context, id int64) (*Sudoku, error)
 }
 
-type SudokuBoard interface {
-	String() string
+type Sudoku struct {
+	ID       int64      `json:"id"`
+	Type     SudokuType `json:"type"`
+	Seed     int64      `json:"seed"`
+	Puzzle   string     `json:"puzzle"`
+	Solution string     `json:"solution"`
 }
 
-type SudokuPuzzle interface {
-	String() string
-	FindUserErrors() []Point
-	FindErrors(target SudokuPuzzle) []Point
-	In(point Point) int8
-}
+type SudokuType string
+
+const (
+	SudokuClassic SudokuType = "sudoku_classic"
+)
 
 // DirectionType is a direction of line/"big" line/some kind of field change.
 type DirectionType uint8

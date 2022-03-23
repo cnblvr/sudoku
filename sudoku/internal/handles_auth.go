@@ -3,8 +3,8 @@ package sudoku
 import (
 	"fmt"
 	"github.com/cnblvr/sudoku/data"
-	"github.com/cnblvr/sudoku/model"
 	"github.com/cnblvr/sudoku/sudoku/templates"
+	"github.com/pkg/errors"
 	"github.com/rs/zerolog/log"
 	"net/http"
 	"strings"
@@ -23,6 +23,7 @@ const (
 
 // HandleLogin is a handler of login page.
 func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
@@ -42,8 +43,6 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
 		d.ErrorMessage = func() string {
-			redis := srv.redis.Get()
-			defer redis.Close()
 			if err := r.ParseForm(); err != nil {
 				log.Warn().Err(err).Msg("failed to parse form")
 				return ErrorBadRequest
@@ -52,30 +51,20 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 			if err := ValidateUsername(username); err != nil {
 				return ErrorUsernameOrPasswordNotValid
 			}
-			user, isExists, err := model.UserByUsername(redis, username)
+			user, err := srv.userRepository.GetUserByUsername(ctx, username)
 			if err != nil {
+				if errors.Is(err, data.ErrUserNotFound) {
+					log.Warn().Err(err).Msg("username is not exists")
+					return ErrorUsernameOrPasswordNotValid
+				}
 				log.Error().Err(err).Msg("failed to get user")
 				return ErrorInternalServerError
 			}
-			if !isExists {
-				log.Debug().Err(err).Msg("username is not exists")
-				return ErrorUsernameOrPasswordNotValid
-			}
 			auth = &data.Auth{
 				IsAuthorized: true,
-				ID:           user.ID(),
+				ID:           user.ID,
 			}
-			salt, err := user.PasswordSalt()
-			if err != nil {
-				log.Debug().Err(err).Msg("failed to get salt")
-				return ErrorInternalServerError
-			}
-			hash, err := user.PasswordHash()
-			if err != nil {
-				log.Debug().Err(err).Msg("failed to get hash")
-				return ErrorInternalServerError
-			}
-			ok, err := srv.verifyPassword(password, salt, hash)
+			ok, err := srv.verifyPassword(password, user.PasswordSalt, user.PasswordHash)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to verify password")
 				return ErrorInternalServerError
@@ -117,6 +106,7 @@ func (srv *Service) HandleLogout(w http.ResponseWriter, r *http.Request) {
 }
 
 func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
@@ -135,8 +125,6 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	// POST method processes data from the user
 	if r.Method == http.MethodPost {
 		d.ErrorMessage = func() string {
-			redis := srv.redis.Get()
-			defer redis.Close()
 			if err := r.ParseForm(); err != nil {
 				log.Warn().Err(err).Msg("failed to parse form")
 				return ErrorBadRequest
@@ -164,34 +152,27 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 				log.Debug().Msg("username and password same")
 				return ErrorUsernamePasswordSame
 			}
-			if isVacant, err := model.IsUsernameVacant(redis, username); err != nil {
-				log.Error().Err(err).Msg("failed to check if username is vacant")
+			user, err := srv.userRepository.CreateUser(ctx, username)
+			if err != nil {
+				if errors.Is(err, data.ErrUsernameIsBusy) {
+					log.Debug().Msg("username is not vacant")
+					return ErrorUsernameAlreadyTaken
+				}
+				log.Error().Err(err).Msg("failed to create user")
 				return ErrorInternalServerError
-			} else if !isVacant {
-				log.Debug().Msg("username is not vacant")
-				return ErrorUsernameAlreadyTaken
 			}
-			salt := generatePasswordSalt()
-			hash, err := srv.hashPassword(password, salt)
+			user.PasswordSalt = generatePasswordSalt()
+			user.PasswordHash, err = srv.hashPassword(password, user.PasswordSalt)
 			if err != nil {
 				log.Error().Err(err).Msg("failed to hash password")
 				return ErrorInternalServerError
 			}
-			user, err := model.NewUser(redis, username)
-			if err != nil {
-				log.Error().Err(err).Msg("failed to create user")
-				return ErrorInternalServerError
-			}
 			auth = &data.Auth{
 				IsAuthorized: true,
-				ID:           user.ID(),
+				ID:           user.ID,
 			}
-			if err := user.SetPasswordSalt(salt); err != nil {
-				log.Error().Err(err).Msg("failed to set salt")
-				return ErrorInternalServerError
-			}
-			if err := user.SetPasswordHash(hash); err != nil {
-				log.Error().Err(err).Msg("failed to set hash")
+			if err := srv.userRepository.UpdateUser(ctx, user); err != nil {
+				log.Error().Err(err).Msg("failed to update user")
 				return ErrorInternalServerError
 			}
 			if err := srv.createAuthCookie(w, auth); err != nil {
