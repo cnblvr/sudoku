@@ -7,17 +7,26 @@ import (
 	"strconv"
 )
 
+var (
+	ErrSudokuNotFound = fmt.Errorf("sudoku not found")
+)
+
 type SudokuRepository interface {
-	CreateSudoku(ctx context.Context, seed int64, puzzle, solution string) (*Sudoku, error)
+	CreateSudoku(ctx context.Context, typ SudokuType, seed int64, puzzle, solution string) (*Sudoku, error)
 	GetSudokuByID(ctx context.Context, id int64) (*Sudoku, error)
 }
 
 type Sudoku struct {
-	ID       int64      `json:"id"`
-	Type     SudokuType `json:"type"`
-	Seed     int64      `json:"seed"`
-	Puzzle   string     `json:"puzzle"`
-	Solution string     `json:"solution"`
+	IDint64Getter   `json:"id"`
+	Type            SudokuType `json:"type"`
+	Seed            int64      `json:"seed"`
+	Puzzle          string     `json:"puzzle"`
+	Solution        string     `json:"solution"`
+	CreatedAtGetter `json:"created_at"`
+}
+
+type SudokuGame struct {
+	IDuuidGetter `json:"id"`
 }
 
 type SudokuType string

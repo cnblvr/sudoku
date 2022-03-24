@@ -24,8 +24,10 @@ type UserRepository interface {
 }
 
 type User struct {
-	ID           int64  `json:"id"`
-	Username     string `json:"username"`
-	PasswordHash []byte `json:"password_hash,omitempty"`
-	PasswordSalt []byte `json:"password_salt,omitempty"`
+	IDint64Getter   `json:"id"`
+	Username        string `json:"username"`
+	PasswordHash    []byte `json:"password_hash,omitempty"`
+	PasswordSalt    []byte `json:"password_salt,omitempty"`
+	CreatedAtGetter `json:"created_at"`
+	UpdatedAtGetter `json:"updated_at"`
 }

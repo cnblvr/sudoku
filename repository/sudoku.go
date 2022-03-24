@@ -7,6 +7,7 @@ import (
 	"github.com/cnblvr/sudoku/data"
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
+	"time"
 )
 
 func (r *RedisRepository) CreateSudoku(ctx context.Context, typ data.SudokuType, seed int64, puzzle, solution string) (*data.Sudoku, error) {
@@ -19,11 +20,16 @@ func (r *RedisRepository) CreateSudoku(ctx context.Context, typ data.SudokuType,
 	}
 
 	sudoku := &data.Sudoku{
-		ID:       id,
+		IDint64Getter: &idInt64{
+			id: id,
+		},
 		Type:     typ,
 		Seed:     seed,
 		Puzzle:   puzzle,
 		Solution: solution,
+		CreatedAtGetter: &createdAt{
+			createdAt: dateTime{time.Now().UTC()},
+		},
 	}
 	if _, err := conn.Do("SET", keySudoku(id)); err != nil {
 		return nil, errors.Wrap(err, "failed to set sudoku")
@@ -39,13 +45,16 @@ func (r *RedisRepository) GetSudokuByID(ctx context.Context, id int64) (*data.Su
 	btsSudoku, err := redis.Bytes(conn.Do("GET", keySudoku(id)))
 	switch err {
 	case redis.ErrNil:
-		return nil, errors.Wrap(err, data.SudokuNotFound)
+		return nil, errors.WithStack(data.ErrSudokuNotFound)
 	case nil:
 	default:
 		return nil, errors.Wrap(err, "failed to get sudoku")
 	}
 
-	var sudoku *data.Sudoku
+	sudoku := &data.Sudoku{
+		IDint64Getter:   &idInt64{},
+		CreatedAtGetter: &createdAt{},
+	}
 	if err := json.Unmarshal(btsSudoku, sudoku); err != nil {
 		return nil, errors.Wrap(err, "failed to decode sudoku")
 	}
@@ -60,64 +69,3 @@ func keyLastSudokuID() string {
 func keySudoku(id int64) string {
 	return fmt.Sprintf("sudoku:%d", id)
 }
-
-//type Sudoku struct {
-//	conn redis.Conn
-//	id   int64
-//}
-//
-//func SudokuByID(conn redis.Conn, id int64) (Sudoku, bool, error) {
-//	_, err := redis.String(conn.Do("GET", keySudoku(id)))
-//	switch err {
-//	case nil:
-//	case redis.ErrNil:
-//		return Sudoku{}, false, nil
-//	default:
-//		return Sudoku{}, false, err
-//	}
-//	return Sudoku{
-//		conn: conn,
-//		id:   id,
-//	}, true, nil
-//}
-//
-//func (s Sudoku) ID() int64 {
-//	return s.id
-//}
-//
-//func (s Sudoku) IsNull() bool {
-//	return s.id <= 0
-//}
-//
-//func (s Sudoku) Puzzle() (string, error) {
-//	return redis.String(s.conn.Do("GET", keySudoku(s.id)))
-//}
-//
-//func (s Sudoku) Board() (string, error) {
-//	return redis.String(s.conn.Do("GET", keySudokuBoard(s.id)))
-//}
-//
-//func NewSudoku(conn redis.Conn, board string, puzzle string) (Sudoku, error) {
-//	id, err := redis.Int64(conn.Do("INCR", keyLastSudokuID()))
-//	if err != nil {
-//		return Sudoku{}, err
-//	}
-//
-//	if _, err := conn.Do("SET", keySudoku(id), puzzle); err != nil {
-//		return Sudoku{}, err
-//	}
-//	if _, err := conn.Do("SET", keySudokuBoard(id), board); err != nil {
-//		return Sudoku{}, err
-//	}
-//
-//	return Sudoku{
-//		conn: conn,
-//		id:   id,
-//	}, nil
-//}
-//
-
-//
-//func keySudokuBoard(id int64) string {
-//	return fmt.Sprintf("%s:board", keySudoku(id))
-//}
