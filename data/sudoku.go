@@ -4,29 +4,57 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	uuid "github.com/satori/go.uuid"
 	"strconv"
 )
 
 var (
-	ErrSudokuNotFound = fmt.Errorf("sudoku not found")
+	ErrSudokuTypeUnknown  = fmt.Errorf("sudoku type unknown")
+	ErrSudokuNotFound     = fmt.Errorf("sudoku not found")
+	ErrSudokuGameNotFound = fmt.Errorf("sudoku game not found")
 )
 
+type SudokuGenerator interface {
+	Generate(ctx context.Context, seed int64) (string, string)
+	FindUserErrors(ctx context.Context, userState string) []Point
+}
+
 type SudokuRepository interface {
+	// Errors: unknown.
 	CreateSudoku(ctx context.Context, typ SudokuType, seed int64, puzzle, solution string) (*Sudoku, error)
+	// Errors: ErrSudokuNotFound, unknown.
 	GetSudokuByID(ctx context.Context, id int64) (*Sudoku, error)
+
+	CreateSudokuGame(ctx context.Context, sudokuID, userID int64) (*SudokuGame, error)
+	// Errors: ErrSudokuNotFound, ErrUserNotFound, unknown.
+	GetSudokuGameByID(ctx context.Context, id uuid.UUID) (*SudokuGame, error)
+	// Errors: ErrSudokuGameNotFound, unknown.
+	GetSudokuGameState(ctx context.Context, id uuid.UUID) (string, error)
+	// Errors: ErrSudokuGameNotFound, unknown.
+	AddSudokuStep(ctx context.Context, id uuid.UUID, step *SudokuStep) error
+	// Errors: ErrSudokuGameNotFound, unknown.
+	GetSudokuGameSteps(ctx context.Context, id uuid.UUID) ([]*SudokuStep, error)
 }
 
 type Sudoku struct {
-	IDint64Getter   `json:"id"`
-	Type            SudokuType `json:"type"`
-	Seed            int64      `json:"seed"`
-	Puzzle          string     `json:"puzzle"`
-	Solution        string     `json:"solution"`
-	CreatedAtGetter `json:"created_at"`
+	ID        int64      `json:"id"`
+	Type      SudokuType `json:"type"`
+	Seed      int64      `json:"seed"`
+	Puzzle    string     `json:"puzzle"`
+	Solution  string     `json:"solution"`
+	CreatedAt DateTime   `json:"created_at"`
 }
 
 type SudokuGame struct {
-	IDuuidGetter `json:"id"`
+	ID        uuid.UUID `json:"id"`
+	SudokuID  int64     `json:"sudoku_id"`
+	UserID    int64     `json:"user_id"`
+	CreatedAt DateTime  `json:"created_at"`
+}
+
+type SudokuStep struct {
+	Point Point `json:"point"`
+	Value int8  `json:"value"`
 }
 
 type SudokuType string

@@ -4,8 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/cnblvr/sudoku/data"
-	"github.com/cnblvr/sudoku/model"
-	"github.com/cnblvr/sudoku/sudoku/internal/sudoku_classic"
+	"github.com/cnblvr/sudoku/library_puzzles"
 	uuid "github.com/satori/go.uuid"
 	"sort"
 )
@@ -15,8 +14,8 @@ func init() {
 }
 
 type websocketMakeStepRequest struct {
-	SessionID string `json:"sessionID"`
-	State     string `json:"state"`
+	GameID string `json:"game_id"`
+	State  string `json:"state"`
 }
 
 func (websocketMakeStepRequest) Method() string {
@@ -24,11 +23,11 @@ func (websocketMakeStepRequest) Method() string {
 }
 
 func (r websocketMakeStepRequest) Validate(ctx context.Context) error {
-	if r.SessionID == "" {
-		return fmt.Errorf("sessionID is empty")
+	if r.GameID == "" {
+		return fmt.Errorf("game_id is empty")
 	}
-	if _, err := uuid.FromString(r.SessionID); err != nil {
-		return fmt.Errorf("sessionID is not UUID")
+	if _, err := uuid.FromString(r.GameID); err != nil {
+		return fmt.Errorf("game_id is not UUID")
 	}
 	if len(r.State) < 81 {
 		return fmt.Errorf("state format invalid")
@@ -38,29 +37,30 @@ func (r websocketMakeStepRequest) Validate(ctx context.Context) error {
 
 func (r websocketMakeStepRequest) Execute(ctx context.Context) (websocketResponse, error) {
 	srv := ctx.Value("srv").(*Service)
-	redis := srv.redis.Get()
-	defer redis.Close()
 
 	uniqueErrs := make(map[data.Point]struct{})
 
-	session, err := model.SudokuSessionByIDString(redis, r.SessionID)
+	game, err := srv.sudokuRepository.GetSudokuGameByID(ctx, uuid.FromStringOrNil(r.GameID))
+	if err != nil {
+		return websocketMakeStepResponse{}, fmt.Errorf("internal server error")
+	}
+	sudoku, err := srv.sudokuRepository.GetSudokuByID(ctx, game.SudokuID)
 	if err != nil {
 		return websocketMakeStepResponse{}, fmt.Errorf("internal server error")
 	}
 
-	boardStr, err := session.Sudoku().Board()
-	if err != nil {
-		return websocketMakeStepResponse{}, fmt.Errorf("internal server error")
-	}
-	if r.State == boardStr {
+	if r.State == sudoku.Solution {
 		// WIN
 		return websocketMakeStepResponse{
 			Win: true,
 		}, nil
 	}
 
-	userState := sudoku_classic.PuzzleFromString(r.State)
-	for _, p := range userState.FindUserErrors() {
+	generator, err := library_puzzles.GetGenerator(sudoku.Type)
+	if err != nil {
+		return websocketMakeStepResponse{}, fmt.Errorf("internal server error")
+	}
+	for _, p := range generator.FindUserErrors(ctx, r.State) {
 		uniqueErrs[p] = struct{}{}
 	}
 

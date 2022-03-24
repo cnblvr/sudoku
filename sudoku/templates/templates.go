@@ -18,7 +18,6 @@ func Common() []string {
 type Args struct {
 	Header Header
 	Auth   *data.Auth
-	User   data.UserInfo
 	Data   interface{}
 	Footer Footer
 }

@@ -3,7 +3,6 @@ package sudoku
 import (
 	"context"
 	"fmt"
-	"github.com/cnblvr/sudoku/model"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -12,7 +11,7 @@ func init() {
 }
 
 type websocketGetPuzzleRequest struct {
-	SessionID string `json:"sessionID"`
+	GameID string `json:"game_id"`
 }
 
 func (websocketGetPuzzleRequest) Method() string {
@@ -20,32 +19,30 @@ func (websocketGetPuzzleRequest) Method() string {
 }
 
 func (r websocketGetPuzzleRequest) Validate(ctx context.Context) error {
-	if r.SessionID == "" {
-		return fmt.Errorf("sessionID is empty")
+	if r.GameID == "" {
+		return fmt.Errorf("game_id is empty")
 	}
-	_, err := uuid.FromString(r.SessionID)
+	_, err := uuid.FromString(r.GameID)
 	if err != nil {
-		return fmt.Errorf("sessionID is not UUID")
+		return fmt.Errorf("game_id is not UUID")
 	}
 	return nil
 }
 
 func (r websocketGetPuzzleRequest) Execute(ctx context.Context) (websocketResponse, error) {
 	srv := ctx.Value("srv").(*Service)
-	redis := srv.redis.Get()
-	defer redis.Close()
 
-	session, err := model.SudokuSessionByIDString(redis, r.SessionID)
+	game, err := srv.sudokuRepository.GetSudokuGameByID(ctx, uuid.FromStringOrNil(r.GameID))
 	if err != nil {
 		return websocketGetPuzzleResponse{}, fmt.Errorf("internal server error")
 	}
-	puzzle, err := session.Sudoku().Puzzle()
+	sudoku, err := srv.sudokuRepository.GetSudokuByID(ctx, game.SudokuID)
 	if err != nil {
 		return websocketGetPuzzleResponse{}, fmt.Errorf("internal server error")
 	}
 
 	return websocketGetPuzzleResponse{
-		Puzzle: puzzle,
+		Puzzle: sudoku.Puzzle,
 	}, nil
 }
 

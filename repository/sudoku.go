@@ -20,21 +20,17 @@ func (r *RedisRepository) CreateSudoku(ctx context.Context, typ data.SudokuType,
 	}
 
 	sudoku := &data.Sudoku{
-		IDint64Getter: &idInt64{
-			id: id,
-		},
-		Type:     typ,
-		Seed:     seed,
-		Puzzle:   puzzle,
-		Solution: solution,
-		CreatedAtGetter: &createdAt{
-			createdAt: dateTime{time.Now().UTC()},
-		},
-	}
-	if _, err := conn.Do("SET", keySudoku(id)); err != nil {
-		return nil, errors.Wrap(err, "failed to set sudoku")
+		ID:        id,
+		Type:      typ,
+		Seed:      seed,
+		Puzzle:    puzzle,
+		Solution:  solution,
+		CreatedAt: data.DateTime{Time: time.Now().UTC()},
 	}
 
+	if err := r.putSudoku(ctx, conn, sudoku); err != nil {
+		return nil, errors.WithStack(err)
+	}
 	return sudoku, nil
 }
 
@@ -42,7 +38,15 @@ func (r *RedisRepository) GetSudokuByID(ctx context.Context, id int64) (*data.Su
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	btsSudoku, err := redis.Bytes(conn.Do("GET", keySudoku(id)))
+	sudoku, err := r.getSudoku(ctx, conn, id)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return sudoku, nil
+}
+
+func (r *RedisRepository) getSudoku(ctx context.Context, conn redis.Conn, id int64) (*data.Sudoku, error) {
+	bts, err := redis.Bytes(conn.Do("GET", keySudoku(id)))
 	switch err {
 	case redis.ErrNil:
 		return nil, errors.WithStack(data.ErrSudokuNotFound)
@@ -51,15 +55,24 @@ func (r *RedisRepository) GetSudokuByID(ctx context.Context, id int64) (*data.Su
 		return nil, errors.Wrap(err, "failed to get sudoku")
 	}
 
-	sudoku := &data.Sudoku{
-		IDint64Getter:   &idInt64{},
-		CreatedAtGetter: &createdAt{},
-	}
-	if err := json.Unmarshal(btsSudoku, sudoku); err != nil {
+	sudoku := &data.Sudoku{}
+	if err := json.Unmarshal(bts, sudoku); err != nil {
 		return nil, errors.Wrap(err, "failed to decode sudoku")
 	}
-
 	return sudoku, nil
+}
+
+func (r *RedisRepository) putSudoku(ctx context.Context, conn redis.Conn, sudoku *data.Sudoku) error {
+	bts, err := json.Marshal(sudoku)
+	if err != nil {
+		return errors.Wrap(err, "failed to encode sudoku")
+	}
+
+	if _, err := conn.Do("SET", keySudoku(sudoku.ID), bts); err != nil {
+		return errors.Wrap(err, "failed to set sudoku")
+	}
+
+	return nil
 }
 
 func keyLastSudokuID() string {

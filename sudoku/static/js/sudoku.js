@@ -1,5 +1,5 @@
 let ws = undefined;
-let sessionID = undefined;
+let game_id = undefined;
 let sudoku = undefined;
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -100,9 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
     // }, 10000);
 
     sudoku.addEventListener('apiReady', () => {
-        sessionID = document.querySelector('#_session').textContent;
+        game_id = document.querySelector('#_game_id').textContent;
         wsApi('getPuzzle', {
-            sessionID: sessionID,
+            game_id: game_id,
         });
     }, {once: true});
 }, false);
@@ -184,7 +184,7 @@ let apiMakeStep = () => {
         state += val;
     });
     wsApi('makeStep', {
-        sessionID: sessionID,
+        game_id: game_id,
         state: state,
     })
 }

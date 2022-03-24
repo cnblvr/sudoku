@@ -5,7 +5,6 @@ import (
 	"github.com/cnblvr/sudoku/data"
 	"github.com/cnblvr/sudoku/sudoku/templates"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
 	"net/http"
 	"strings"
 )
@@ -24,12 +23,12 @@ const (
 // HandleLogin is a handler of login page.
 func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	auth, log := getAuth(ctx), getLogger(ctx)
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
 
 	// If the user is already logged in, then redirect to the main page.
-	auth := getAuth(r)
 	if auth.IsAuthorized {
 		log.Debug().Str("redirect", data.EndpointIndex).Int64("id", auth.ID).Msg("client already logged in")
 		redirect(data.EndpointIndex)
@@ -99,18 +98,19 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 // HandleLogout is a handler of logout.
 func (srv *Service) HandleLogout(w http.ResponseWriter, r *http.Request) {
-	a := getAuth(r)
+	ctx := r.Context()
+	auth, log := getAuth(ctx), getLogger(ctx)
 	deleteAuthCookie(w)
-	log.Debug().Str("redirect", data.EndpointIndex).Int64("id", a.ID).Msg("client logged out")
+	log.Debug().Str("redirect", data.EndpointIndex).Int64("id", auth.ID).Msg("client logged out")
 	http.Redirect(w, r, data.EndpointIndex, http.StatusSeeOther)
 }
 
 func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	auth, log := getAuth(ctx), getLogger(ctx)
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
-	auth := getAuth(r)
 
 	if auth.IsAuthorized {
 		log.Debug().Str("redirect", data.EndpointIndex).Int64("id", auth.ID).Msg("client already signed up")

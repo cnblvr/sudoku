@@ -1,6 +1,7 @@
 package sudoku_classic
 
 import (
+	"context"
 	"fmt"
 	"github.com/cnblvr/sudoku/data"
 	stdlog "log"
@@ -8,34 +9,16 @@ import (
 	"strconv"
 )
 
-// Sudoku is the basic structure of a 9x9 Sudoku puzzle.
-type Sudoku struct {
-	// seed allows you to create a unique puzzle
-	seed int64
-	// board stores the solution to the puzzle
-	board sudokuBoard
-	// puzzle stores hints for the user
-	puzzle sudokuPuzzle
-}
+type Generator struct{}
 
-func (s Sudoku) Board() data.SudokuBoard {
-	return s.board
-}
-
-func (s Sudoku) Puzzle() data.SudokuPuzzle {
-	return s.puzzle
-}
-
-// NewSudoku creates a new puzzle and removes some hints depending on the level.
+// Generate creates a new puzzle and removes some hints depending on the level.
 // seed is used to create a unique puzzle.
-func NewSudoku(seed int64) data.Sudoku {
-	s := Sudoku{}
-	s.seed = seed
+func (Generator) Generate(ctx context.Context, seed int64) (string, string) {
 	// randomizer for full puzzle generation
 	rnd := rand.New(rand.NewSource(seed))
 
 	// puzzle generation without shuffling
-	s.board = generateSudokuBoard(rnd)
+	solution := generateSudokuBoard(rnd)
 
 	// swap of horizontal or vertical lines within one "big" line
 	// TODO: imperfect randomization
@@ -45,27 +28,27 @@ func NewSudoku(seed int64) data.Sudoku {
 			typ = data.Vertical
 		}
 		line := rnd.Int() % 9
-		s.board.swapLines(typ, line, neighborLine(line, rnd.Int()%2))
+		solution.swapLines(typ, line, neighborLine(line, rnd.Int()%2))
 	}
 
 	// TODO: swap "big" lines
 
 	// horizontal reflection
 	if rnd.Int()%2 == 1 {
-		s.board.reflect(data.Horizontal)
+		solution.reflect(data.Horizontal)
 	}
 	// vertical reflection
 	if rnd.Int()%2 == 1 {
-		s.board.reflect(data.Vertical)
+		solution.reflect(data.Vertical)
 	}
 
 	// rotate the puzzle by a random angle
-	s.board.rotate(data.RotationType(rnd.Int() % 4))
+	solution.rotate(data.RotationType(rnd.Int() % 4))
 
-	s.puzzle = make([][]int8, 9)
+	puzzle := make(sudokuPuzzle, 9)
 	for row := 0; row < 9; row++ {
-		s.puzzle[row] = make([]int8, 9)
-		copy(s.puzzle[row], s.board[row])
+		puzzle[row] = make([]int8, 9)
+		copy(puzzle[row], solution[row])
 	}
 
 	removes := 81
@@ -76,13 +59,13 @@ mainFor:
 			if removes >= 46 {
 				break mainFor // todo level
 			}
-			digit := s.puzzle[p.Row][p.Col]
+			digit := puzzle[p.Row][p.Col]
 			if digit == 0 {
 				continue
 			}
-			s.puzzle[p.Row][p.Col] = 0
-			if len(s.puzzle.solveBruteForce(2)) != 1 {
-				s.puzzle[p.Row][p.Col] = digit
+			puzzle[p.Row][p.Col] = 0
+			if len(puzzle.solveBruteForce(2)) != 1 {
+				puzzle[p.Row][p.Col] = digit
 				continue
 			} else {
 				removes++
@@ -91,12 +74,16 @@ mainFor:
 		stdlog.Printf("iteration. removes: %d", removes)
 	}
 
-	return &s
+	return puzzle.String(), solution.String()
+}
+
+func (Generator) FindUserErrors(ctx context.Context, userState string) []data.Point {
+	return sudokuPuzzleFromString(userState).FindUserErrors()
 }
 
 // Puzzle generation without shuffling.
-func generateSudokuBoard(rnd *rand.Rand) sudokuBoard {
-	b := make([][]int8, 9)
+func generateSudokuBoard(rnd *rand.Rand) sudokuPuzzle {
+	b := make(sudokuPuzzle, 9)
 	for i := 0; i < 9; i++ {
 		b[i] = make([]int8, 9)
 	}

@@ -16,8 +16,8 @@ type websocketMessage struct {
 }
 
 func (srv *Service) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
-	auth := getAuth(r)
-	log := log.Logger
+	ctx := r.Context()
+	auth, log := getAuth(ctx), getLogger(ctx)
 	if !auth.IsAuthorized {
 		log.With().Bool("anonymous", true).Logger()
 	} else {

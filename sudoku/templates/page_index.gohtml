@@ -1,5 +1,5 @@
-{{define "page_index"}}{{template "header" .Header}}{{$auth := .Auth}}{{$user := .User}}
-<p>Hello{{if $auth.IsAuthorized}}, <a href="/info">{{with $user.Name}}{{.}}{{else}}{{$user.Username}}{{end}}{{end}}</a>. This is a Sudoku game.</p>
+{{define "page_index"}}{{template "header" .Header}}{{$auth := .Auth}}{{$data := .Data}}
+<p>Hello{{if $auth.IsAuthorized}}, <a href="/info">{{$data.Username}}{{end}}</a>. This is a Sudoku game.</p>
 <form action="/sudoku/play" method="get">
     <button type="submit">Play{{if not $auth.IsAuthorized}} as anonymous{{end}}</button>{{if not $auth.IsAuthorized}} or <a href="/login">log in</a> or <a href="/signup">sign up</a>{{end}}
 </form>

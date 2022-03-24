@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/cnblvr/sudoku/data"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"net/http"
 )
@@ -11,27 +12,19 @@ import (
 // MiddlewareCookies reads the cookies used in the service and puts them in the context.
 func (srv *Service) MiddlewareCookies(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log := log.With().Str("path", r.URL.Path).Logger()
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "auth", &data.Auth{})
-		for _, name := range []string{"auth"} {
-			c, err := r.Cookie(name)
-			if err != nil {
-				log.Debug().Err(err).Msg("cookie 'auth' not found")
-				continue
-			}
-			switch c.Name {
+		log := log.Logger.With().Str("path", r.URL.Path).Logger()
+		ctx = context.WithValue(ctx, "logger", log)
 
-			// read 'auth' cookie
-			case "auth":
-				a := data.Auth{}
-				if err := srv.securecookie.Decode("auth", c.Value, &a); err != nil {
-					log.Warn().Err(err).Msg("failed to decode cookie 'auth'")
-					continue
-				}
+		if c, err := r.Cookie("auth"); err == nil {
+			a := data.Auth{}
+			if err := srv.securecookie.Decode("auth", c.Value, &a); err != nil {
+				log.Warn().Err(err).Msg("failed to decode cookie 'auth'")
+			} else {
 				ctx = context.WithValue(ctx, "auth", &a)
 			}
 		}
+
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -40,21 +33,20 @@ func (srv *Service) MiddlewareCookies(next http.Handler) http.Handler {
 // MiddlewareCookies pre-middleware required.
 func (srv *Service) MiddlewareMustBeAuthorized(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log := log.With().Str("path", r.URL.Path).Logger()
 		ctx := r.Context()
+		auth, log := getAuth(ctx), getLogger(ctx)
 		redirect := func(endpoint string) {
 			deleteAuthCookie(w)
 			http.Redirect(w, r, endpoint, http.StatusSeeOther)
 		}
-		a := getAuth(r)
 
-		if !a.IsAuthorized {
+		if !auth.IsAuthorized {
 			log.Debug().Str("redirect", data.EndpointIndex).Msg("client is not authorized")
 			redirect(data.EndpointIndex)
 			return
 		}
 
-		user, err := srv.userRepository.GetUserByID(ctx, a.ID)
+		_, err := srv.userRepository.GetUserByID(ctx, auth.ID)
 		if err != nil {
 			if errors.Is(err, data.ErrUserNotFound) {
 				log.Debug().Str("redirect", data.EndpointLogout).Msg("user not found")
@@ -65,18 +57,29 @@ func (srv *Service) MiddlewareMustBeAuthorized(next http.Handler) http.Handler {
 			redirect(data.EndpointIndex)
 			return
 		}
-		ctx = context.WithValue(ctx, "user", user)
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 		return
 	})
 }
 
-// getAuth get authorization data from request's context.
-func getAuth(r *http.Request) *data.Auth {
-	return r.Context().Value("auth").(*data.Auth)
+func getLogger(ctx context.Context) zerolog.Logger {
+	val := ctx.Value("logger")
+	logger, ok := val.(zerolog.Logger)
+	if !ok {
+		return log.Logger
+	}
+	return logger
 }
 
-func getUser(r *http.Request) *data.User {
-	return r.Context().Value("user").(*data.User)
+func getAuth(ctx context.Context) *data.Auth {
+	val := ctx.Value("auth")
+	if val == nil {
+		return &data.Auth{}
+	}
+	auth, ok := val.(*data.Auth)
+	if !ok {
+		return &data.Auth{}
+	}
+	return auth
 }

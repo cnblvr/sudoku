@@ -1,5 +1,5 @@
 {{define "page_sudoku"}}{{template "header" .Header}}{{$data := .Data}}
-<table id="sudoku"></table><p id="_session" hidden>{{$data.Session}}</p>
+<table id="sudoku"></table><p id="_game_id" hidden>{{$data.GameID}}</p>
 {{with $data.ErrorMessage}}<p>{{.}} Go to <a href="/">home page</a>.</p>
 {{end}}}<p>Back to the <a href="/">main page</a>.</p>
 {{template "footer" .Footer}}{{end}}

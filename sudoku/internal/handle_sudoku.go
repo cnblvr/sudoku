@@ -2,11 +2,11 @@ package sudoku
 
 import (
 	"fmt"
-	"github.com/cnblvr/sudoku/model"
+	"github.com/cnblvr/sudoku/data"
 	"github.com/cnblvr/sudoku/sudoku/static"
 	"github.com/cnblvr/sudoku/sudoku/templates"
 	"github.com/gorilla/mux"
-	"github.com/rs/zerolog/log"
+	uuid "github.com/satori/go.uuid"
 	"net/http"
 )
 
@@ -16,33 +16,33 @@ const (
 
 // HandleSudoku renders page with puzzle.
 func (srv *Service) HandleSudoku(w http.ResponseWriter, r *http.Request) {
-	redis := srv.redis.Get()
-	defer redis.Close()
-
+	ctx := r.Context()
+	log := getLogger(ctx)
 	var d struct {
-		Session      string
+		GameID       string
 		ErrorMessage string
 	}
 
 	d.ErrorMessage = func() string {
-		var sudokuSession model.SudokuSession
+		var sudokuGame *data.SudokuGame
 		var err error
-		sessionID, ok := mux.Vars(r)["session_id"]
-		if !ok {
-			log.Error().Msg("'session_id' not found in mux.Vars")
+		var gameID uuid.UUID
+		if gameIDStr, ok := mux.Vars(r)["game_id"]; !ok {
+			log.Error().Msg("'game_id' not found in mux.Vars")
+			return ErrorBadRequest
+		} else if gameID, err = uuid.FromString(gameIDStr); err != nil {
+			log.Error().Err(err).Msg("failed to parse sudoku game id as uuid")
 			return ErrorBadRequest
 		}
-		if sudokuSession, err = model.SudokuSessionByIDString(redis, sessionID); err != nil {
-			log.Warn().Err(err).Msgf("sudoku session '%s' not found", sessionID)
+		if sudokuGame, err = srv.sudokuRepository.GetSudokuGameByID(ctx, gameID); err != nil {
+			log.Warn().Err(err).Msgf("sudoku session '%s' not found", gameID.String())
 			return ErrorSudokuNotFound
 		}
-		d.Session = sudokuSession.ID().String()
-
-		// TODO sudokuSession.Sudoku().AddUserID()
-		_ = sudokuSession
-
+		d.GameID = sudokuGame.ID.String()
 		return ""
 	}()
+
+	// TODO sudokuSession.Sudoku().AddUserID()
 
 	args := templates.Args{
 		Header: templates.Header{

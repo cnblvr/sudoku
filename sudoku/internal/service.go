@@ -17,7 +17,8 @@ import (
 
 // Service is a service structure.
 type Service struct {
-	userRepository data.UserRepository
+	userRepository   data.UserRepository
+	sudokuRepository data.SudokuRepository
 	// Storage for templates
 	templates *template.Template
 	// Object to generate hash from password.
@@ -92,6 +93,7 @@ func NewService() (*Service, error) {
 	}
 	repo := repository.New(redisPool)
 	srv.userRepository = repo
+	srv.sudokuRepository = repo
 
 	// init upgrader
 	srv.upgrader = websocket.Upgrader{}

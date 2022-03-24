@@ -16,7 +16,7 @@ func (r *RedisRepository) CreateUser(ctx context.Context, username string) (*dat
 	defer conn.Close()
 
 	if ok, err := redis.Bool(conn.Do("EXISTS", keyUsername(username))); err != nil {
-		return nil, errors.Wrap(err, "failed to get owner of username")
+		return nil, errors.Wrap(err, "failed to check existence owner of username")
 	} else if ok {
 		return nil, errors.WithStack(data.ErrUsernameIsBusy)
 	}
@@ -31,21 +31,14 @@ func (r *RedisRepository) CreateUser(ctx context.Context, username string) (*dat
 	}
 
 	user := &data.User{
-		IDint64Getter: &idInt64{
-			id: id,
-		},
-		Username: username,
-		CreatedAtGetter: &createdAt{
-			createdAt: dateTime{time.Now().UTC()},
-		},
-		UpdatedAtGetter: &updatedAt{
-			updatedAt: dateTime{time.Now().UTC()},
-		},
+		ID:        id,
+		Username:  username,
+		CreatedAt: data.DateTime{Time: time.Now().UTC()},
 	}
+
 	if err := r.putUser(ctx, conn, user); err != nil {
 		return nil, err
 	}
-
 	return user, nil
 }
 
@@ -53,7 +46,11 @@ func (r *RedisRepository) GetUserByID(ctx context.Context, id int64) (*data.User
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	return r.getUser(ctx, conn, id)
+	user, err := r.getUser(ctx, conn, id)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return user, nil
 }
 
 func (r *RedisRepository) GetUserByUsername(ctx context.Context, username string) (*data.User, error) {
@@ -69,19 +66,23 @@ func (r *RedisRepository) GetUserByUsername(ctx context.Context, username string
 		return nil, errors.Wrap(err, "failed to get user")
 	}
 
-	return r.getUser(ctx, conn, id)
+	user, err := r.getUser(ctx, conn, id)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+	return user, nil
 }
 
 func (r *RedisRepository) UpdateUser(ctx context.Context, user *data.User) error {
 	conn := r.pool.Get()
 	defer conn.Close()
 
-	oldUser, err := r.getUser(ctx, conn, user.ID())
+	oldUser, err := r.getUser(ctx, conn, user.ID)
 	if err != nil {
 		return err
 	}
 	if oldUser.Username != user.Username {
-		if err := r.occupyUsername(ctx, conn, oldUser.Username, user.Username, user.ID()); err != nil {
+		if err := r.occupyUsername(ctx, conn, oldUser.Username, user.Username, user.ID); err != nil {
 			return err
 		}
 	}
@@ -89,7 +90,6 @@ func (r *RedisRepository) UpdateUser(ctx context.Context, user *data.User) error
 	if err := r.putUser(ctx, conn, user); err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -117,33 +117,23 @@ func (r *RedisRepository) getUser(ctx context.Context, conn redis.Conn, id int64
 		return nil, errors.Wrap(err, "failed to get user")
 	}
 
-	user := &data.User{
-		IDint64Getter:   &idInt64{},
-		CreatedAtGetter: &createdAt{},
-		UpdatedAtGetter: &updatedAt{},
-	}
+	user := &data.User{}
 	if err := json.Unmarshal(btsUser, user); err != nil {
 		return nil, errors.Wrap(err, "failed to decode user")
 	}
-
 	return user, nil
 }
 
 func (r *RedisRepository) putUser(ctx context.Context, conn redis.Conn, user *data.User) error {
-	updAt, ok := user.UpdatedAtGetter.(*updatedAt)
-	if !ok {
-		return errors.Errorf("UpdatedAtGetter is not *updatedAt. Got %T", user.UpdatedAtGetter)
-	}
-	updAt.updatedAt = dateTime{time.Now().UTC()}
+	user.UpdatedAt = data.DateTime{Time: time.Now().UTC()}
 	btsUser, err := json.Marshal(user)
 	if err != nil {
 		return errors.Wrap(err, "failed to encode user")
 	}
 
-	if _, err := conn.Do("SET", keyUser(user.ID()), btsUser); err != nil {
+	if _, err := conn.Do("SET", keyUser(user.ID), btsUser); err != nil {
 		return errors.Wrap(err, "failed to set user")
 	}
-
 	return nil
 }
 

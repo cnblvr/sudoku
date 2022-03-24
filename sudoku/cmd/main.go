@@ -46,11 +46,11 @@ func main() {
 	// Signup page and handler
 	rPages.Path("/signup").Methods(http.MethodGet, http.MethodPost).HandlerFunc(srv.HandleSignup)
 	// User's info page and handler
-	rAuth.Path("/info").Methods(http.MethodGet, http.MethodPost).HandlerFunc(srv.HandleUserInfo)
+	//rAuth.Path("/info").Methods(http.MethodGet, http.MethodPost).HandlerFunc(srv.HandleUserInfo)
 	// Puzzle create game page
 	rPages.Path("/sudoku/play").Methods(http.MethodGet).HandlerFunc(srv.HandleSudokuCreate)
 	// Puzzle page
-	rPages.Path("/sudoku/{session_id}").Methods(http.MethodGet).HandlerFunc(srv.HandleSudoku)
+	rPages.Path("/sudoku/{game_id}").Methods(http.MethodGet).HandlerFunc(srv.HandleSudoku)
 
 	// Websocket handler
 	rPages.Path("/ws").Methods(http.MethodGet).HandlerFunc(srv.HandleWebsocket)

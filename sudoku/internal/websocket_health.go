@@ -19,12 +19,7 @@ func (r websocketHealthRequest) Validate(ctx context.Context) error {
 }
 
 func (r websocketHealthRequest) Execute(ctx context.Context) (websocketResponse, error) {
-	srv := ctx.Value("srv").(*Service)
-	redis := srv.redis.Get()
-	defer redis.Close()
-	if _, err := redis.Do("PING"); err != nil {
-		return websocketHealthResponse("FAIL"), nil
-	}
+	//srv := ctx.Value("srv").(*Service)
 	return websocketHealthResponse("OK"), nil
 }
 
