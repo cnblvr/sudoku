@@ -23,13 +23,40 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    let placeDigitInActive = (digit) => {
+        if (sudoku.classList.contains('win')) return;
+        let td = sudoku.querySelector('td.active');
+        if (td || td.classList.contains('hint')) return;
+        let oldDigit = td.textContent;
+        td.textContent = digit;
+        if (oldDigit === digit) apiMakeStep();
+    };
+
+    let keyboard = document.querySelector('#mobile-keyboard');
+    if (keyboard !== undefined) {
+        let createButton = (id, label, event) => {
+            let button = document.createElement('span');
+            button.classList.add('keyboard-button');
+            button.id = id;
+            button.textContent = label;
+            button.addEventListener('mouseup', event);
+            keyboard.appendChild(button);
+        }
+        for (let digit = 1; digit <= 9; digit++) {
+            createButton('button'+digit, digit, (e) => {
+                placeDigitInActive(digit);
+            });
+        }
+        createButton('button'+digit, '⨯', (e) => {
+            placeDigitInActive('0');
+        });
+    }
+
     // Creating keyup and digit input handlers on document.
     document.addEventListener('keydown', (e) => {
         if (e.defaultPrevented) {
             return;
         }
-        let isWin = sudoku.classList.contains('win');
-        let changed = false;
         let td = document.querySelector('#sudoku tr td.active');
         switch (e.code) {
             case 'ArrowUp':    setActive(td, 'up');    break;
@@ -40,16 +67,11 @@ document.addEventListener('DOMContentLoaded', () => {
             case 'Numpad0':
             case 'Space':
             case 'Backspace':
-                if (!isWin && td && !td.classList.contains('hint')) {
-                    td.textContent = '';
-                    changed = true;
-                }
+                placeDigitInActive('0');
         }
-        if (!isWin && td && '1' <= e.key && e.key <= '9' && !td.classList.contains('hint')) {
-            td.textContent = e.key;
-            changed = true;
+        if ('1' <= e.key && e.key <= '9') {
+            placeDigitInActive(e.key);
         }
-        if (changed) apiMakeStep();
     });
 
     sudoku.addEventListener('api_getPuzzle', (e) => {

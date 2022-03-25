@@ -14,8 +14,9 @@ func init() {
 }
 
 type websocketMakeStepRequest struct {
-	GameID string `json:"game_id"`
-	State  string `json:"state"`
+	GameID         string `json:"game_id"`
+	State          string `json:"state"`
+	NeedCandidates bool   `json:"need_candidates,omitempty"`
 }
 
 func (websocketMakeStepRequest) Method() string {
@@ -80,13 +81,17 @@ func (r websocketMakeStepRequest) Execute(ctx context.Context) (websocketRespons
 		}
 		return resp.Errors[i].Col < resp.Errors[j].Col
 	})
+	if r.NeedCandidates {
+		resp.Candidates = generator.GetCandidates(ctx, r.State)
+	}
 	return resp, nil
 }
 
 // TODO handle and test
 type websocketMakeStepResponse struct {
-	Errors []data.Point `json:"errors,omitempty"`
-	Win    bool         `json:"win,omitempty"`
+	Errors     []data.Point          `json:"errors,omitempty"`
+	Win        bool                  `json:"win,omitempty"`
+	Candidates map[data.Point][]int8 `json:"candidates,omitempty"`
 }
 
 func (websocketMakeStepResponse) Method() string {

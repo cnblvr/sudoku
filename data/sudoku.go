@@ -16,6 +16,7 @@ var (
 
 type SudokuGenerator interface {
 	Generate(ctx context.Context, seed int64) (string, string)
+	GetCandidates(ctx context.Context, puzzle string) map[Point][]int8
 	FindUserErrors(ctx context.Context, userState string) []Point
 }
 

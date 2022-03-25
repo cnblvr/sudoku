@@ -95,6 +95,26 @@ func Test_sudokuPuzzle_solveBruteForce(t *testing.T) {
 			},
 			duration: true,
 		},
+		/*{
+			// 46m48.813609s without transformations
+		    // TODO optimize
+			name: "#6 optimize",
+			p:    "........1.......23..4..5......1.........3.6....7...58.....67....1...4...52.......",
+			want: []string{
+				"672983451951476823384215976468159237295738614137642589843567192719824365526391748",
+			},
+			duration: true,
+		},*/
+		/*{
+			// 42m34.366672s without transformations
+			// TODO optimize
+			name: "#7 optimize",
+			p:    "..............3.85..1.2.......5.7.....4...1...9.......5......73..2.1........4...9",
+			want: []string{
+				"987654321246173985351928746128537694634892157795461832519286473472319568863745219",
+			},
+			duration: true,
+		},*/
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

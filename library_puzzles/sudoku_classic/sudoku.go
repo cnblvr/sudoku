@@ -11,7 +11,7 @@ import (
 
 type Generator struct{}
 
-// Generate creates a new puzzle and removes some hints depending on the level.
+// Generate returns puzzle and solution.
 // seed is used to create a unique puzzle.
 func (Generator) Generate(ctx context.Context, seed int64) (string, string) {
 	// randomizer for full puzzle generation
@@ -75,6 +75,18 @@ mainFor:
 	}
 
 	return puzzle.String(), solution.String()
+}
+
+func (Generator) GetCandidates(ctx context.Context, puzzle string) map[data.Point][]int8 {
+	p := sudokuPuzzleFromString(puzzle)
+	out := make(map[data.Point][]int8)
+	p.findCandidates().forEach(func(point data.Point, candidates []int8) {
+		if p[point.Row][point.Col] != 0 {
+			return
+		}
+		out[point] = candidates
+	})
+	return out
 }
 
 func (Generator) FindUserErrors(ctx context.Context, userState string) []data.Point {

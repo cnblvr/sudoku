@@ -30,89 +30,118 @@ import (
 type sudokuPuzzle [][]int8
 
 // Swap of lines within one "big" line.
-func (b sudokuPuzzle) swapLines(dir data.DirectionType, lineA, lineB int) {
-	switch dir {
+func (p sudokuPuzzle) swapLines(dir data.DirectionType, lineA, lineB int) {
+	if lineA == lineB {
+		return
+	}
 
+	switch dir {
 	case data.Horizontal:
 		// Swap two horizontal lines
 		temp := make([]int8, 9)
-		copy(temp, b[lineA])
-		copy(b[lineA], b[lineB])
-		copy(b[lineB], temp)
+		copy(temp, p[lineA])
+		copy(p[lineA], p[lineB])
+		copy(p[lineB], temp)
 
 	case data.Vertical:
 		// Swap two vertical lines
 		for row := 0; row < 9; row++ {
-			b[row][lineA], b[row][lineB] = b[row][lineB], b[row][lineA]
+			p[row][lineA], p[row][lineB] = p[row][lineB], p[row][lineA]
+		}
+	}
+}
+
+func (p sudokuPuzzle) swapBigLines(dir data.DirectionType, lineA, lineB int) {
+	if lineA == lineB {
+		return
+	}
+
+	switch dir {
+	case data.Horizontal:
+		// Swap two horizontal "big" lines
+		temp := make([]int8, 9)
+		for i := 0; i < 3; i++ {
+			copy(temp, p[lineA*3+i])
+			copy(p[lineA*3+i], p[lineB*3+i])
+			copy(p[lineB*3+i], temp)
+		}
+
+	case data.Vertical:
+		// Swap two vertical "big" lines
+		for row := 0; row < 9; row++ {
+			for i := 0; i < 3; i++ {
+				p[row][lineA*3+i], p[row][lineB*3+i] = p[row][lineB*3+i], p[row][lineA*3+i]
+			}
 		}
 	}
 }
 
 // Reflect the entire puzzle in the typ direction.
-func (b sudokuPuzzle) reflect(typ data.DirectionType) {
+func (p sudokuPuzzle) reflect(typ data.DirectionType) {
 	switch typ {
 
 	case data.Horizontal:
 		for col := 0; col < 4; col++ {
 			for row := 0; row < 9; row++ {
-				b[row][col], b[row][8-col] = b[row][8-col], b[row][col]
+				p[row][col], p[row][8-col] = p[row][8-col], p[row][col]
 			}
 		}
 
 	case data.Vertical:
 		for row := 0; row < 4; row++ {
-			b[row], b[8-row] = b[8-row], b[row]
+			p[row], p[8-row] = p[8-row], p[row]
 		}
 	}
 }
 
 // Rotate the entire puzzle in the rotation r.
-func (b sudokuPuzzle) rotate(r data.RotationType) {
+func (p sudokuPuzzle) rotate(r data.RotationType) {
+	r = r % 4
 	switch r {
 
 	case data.Rotate90:
 		temp := make([][]int8, 9)
 		for col := 8; col >= 0; col-- {
 			for row := 0; row < 9; row++ {
-				temp[8-col] = append(temp[8-col], b[row][col])
+				temp[8-col] = append(temp[8-col], p[row][col])
 			}
 		}
 		for row := 0; row < 9; row++ {
-			b[row] = temp[row]
+			p[row] = temp[row]
 		}
 
 	case data.Rotate180:
 		for row := 0; row < 4; row++ {
 			for col := 0; col < 9; col++ {
-				b[row][col], b[8-row][8-col] = b[8-row][8-col], b[row][col]
+				p[row][col], p[8-row][8-col] = p[8-row][8-col], p[row][col]
 			}
 		}
 		for col := 0; col < 4; col++ {
-			b[4][col], b[4][8-col] = b[4][8-col], b[4][col]
+			p[4][col], p[4][8-col] = p[4][8-col], p[4][col]
 		}
 
 	case data.Rotate270:
 		temp := make([][]int8, 9)
 		for col := 0; col < 9; col++ {
 			for row := 8; row >= 0; row-- {
-				temp[col] = append(temp[col], b[row][col])
+				temp[col] = append(temp[col], p[row][col])
 			}
 		}
 		for row := 0; row < 9; row++ {
-			b[row] = temp[row]
+			p[row] = temp[row]
 		}
 	}
 }
 
 // Swap the digits digitA and digitB in the entire puzzle.
-func (b sudokuPuzzle) swapDigits(digitA, digitB int) {
+func (p sudokuPuzzle) swapDigits(digitA, digitB int) {
 	for row := 0; row < 9; row++ {
 		for col := 0; col < 9; col++ {
-			switch int(b[row][col]) {
+			switch int(p[row][col]) {
 			case digitA:
-				b[row][col] = int8(digitB)
+				p[row][col] = int8(digitB)
 			case digitB:
-				b[row][col] = int8(digitA)
+				p[row][col] = int8(digitA)
 			}
 		}
 	}
