@@ -14,3 +14,9 @@ echo 'REDIS_PASSWORD=<password>\n' >> dev.env
 ```shell
 sudo docker-compose up --build
 ```
+
+###TODO
+
+- easy: 33-37
+- medium: 28-32
+- hard: 23-27

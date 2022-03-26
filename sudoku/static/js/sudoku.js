@@ -26,10 +26,10 @@ document.addEventListener('DOMContentLoaded', () => {
     let placeDigitInActive = (digit) => {
         if (sudoku.classList.contains('win')) return;
         let td = sudoku.querySelector('td.active');
-        if (td || td.classList.contains('hint')) return;
+        if (!td || td.classList.contains('hint')) return;
         let oldDigit = td.textContent;
-        td.textContent = digit;
-        if (oldDigit === digit) apiMakeStep();
+        td.textContent = (digit === '0')?'':digit;
+        if (oldDigit !== digit) apiMakeStep();
     };
 
     let keyboard = document.querySelector('#mobile-keyboard');
@@ -44,10 +44,10 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         for (let digit = 1; digit <= 9; digit++) {
             createButton('button'+digit, digit, (e) => {
-                placeDigitInActive(digit);
+                placeDigitInActive(''+digit);
             });
         }
-        createButton('button'+digit, '⨯', (e) => {
+        createButton('button0', '⨯', (e) => {
             placeDigitInActive('0');
         });
     }
