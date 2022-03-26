@@ -7,49 +7,88 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Creating board in table element.
     for (let row = 0; row < 9; row++) {
-        let tr = document.createElement('tr');
+        let elRow = document.createElement('div');
+        elRow.classList.add('row');
         for (let col = 0; col < 9; col++) {
-            let td = document.createElement('td');
-            td.id = String.fromCharCode('a'.charCodeAt(0)+row)+(col+1);
-            tr.appendChild(td);
+            let elCell = document.createElement('div');
+            elCell.classList.add('cell');
+            elCell.id = String.fromCharCode('a'.charCodeAt(0)+row)+(col+1); // TODO remove
+
+            // digit place
+            let elDigit = document.createElement('div');
+            elDigit.classList.add('digit');
+            elCell.appendChild(elDigit);
+
+            // candidates place
+            let elCands = document.createElement('div');
+            elCands.classList.add('cands');
+            for (let crow = 0; crow < 3; crow++) {
+                let elCandsRow = document.createElement('div');
+                for (let ccol = 0; ccol < 3; ccol++) {
+                    let elCand = document.createElement('div');
+                    let cval = crow*3+ccol+1;
+                    elCand.classList.add('c'+cval);
+                    elCand.textContent = ''+cval;
+                    elCandsRow.appendChild(elCand);
+                }
+                elCands.appendChild(elCandsRow);
+            }
+            elCell.appendChild(elCands);
+
+            elRow.appendChild(elCell);
         }
-        sudoku.appendChild(tr);
+        sudoku.appendChild(elRow);
     }
 
     // Creating event handlers for all cells.
-    sudoku.querySelectorAll('tr td').forEach((td) => {
-        td.addEventListener('mouseup', function(e) {
-            setActive(td);
+    sudoku.querySelectorAll('.cell').forEach((cell) => {
+        cell.addEventListener('mouseup', function(e) {
+            setActive(cell);
         });
     });
 
-    let placeDigitInActive = (digit) => {
+    let placeDigit = (elCell, digit, notMakeStep) => {
         if (sudoku.classList.contains('win')) return;
-        let td = sudoku.querySelector('td.active');
-        if (!td || td.classList.contains('hint')) return;
-        let oldDigit = td.textContent;
-        td.textContent = (digit === '0')?'':digit;
-        if (oldDigit !== digit) apiMakeStep();
+        if (!elCell || elCell.classList.contains('hint')) return;
+        let elDigit = elCell.querySelector('.digit');
+        let oldDigit = elDigit.textContent===''?'0':elDigit.textContent;
+        elCell.classList.remove('is_digit', 'is_cands');
+        if (digit === '0') {
+            elDigit.textContent = '';
+            elCell.classList.add('is_cands');
+        } else {
+            elDigit.textContent = digit;
+            elCell.classList.add('is_digit');
+        }
+        if (!notMakeStep && oldDigit !== digit) apiMakeStep();
     };
 
-    let keyboard = document.querySelector('#mobile-keyboard');
+    let placeDigitInActive = (digit, notMakeStep) => {
+        if (sudoku.classList.contains('win')) return;
+        placeDigit(sudoku.querySelector('.cell.active'), digit, notMakeStep);
+    };
+
+    let keyboard = document.querySelector('#keyboard');
     if (keyboard !== undefined) {
         let createButton = (id, label, event) => {
-            let button = document.createElement('span');
+            let button = document.createElement('div');
             button.classList.add('keyboard-button');
             button.id = id;
             button.textContent = label;
-            button.addEventListener('mouseup', event);
+            button.addEventListener('click', event);
             keyboard.appendChild(button);
         }
+        createButton('buttonC', 'c', (e) => {
+            console.log('TODO set candidates');
+        });
+        createButton('button0', '⨯', (e) => {
+            placeDigitInActive('0');
+        });
         for (let digit = 1; digit <= 9; digit++) {
             createButton('button'+digit, digit, (e) => {
                 placeDigitInActive(''+digit);
             });
         }
-        createButton('button0', '⨯', (e) => {
-            placeDigitInActive('0');
-        });
     }
 
     // Creating keyup and digit input handlers on document.
@@ -57,12 +96,12 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.defaultPrevented) {
             return;
         }
-        let td = document.querySelector('#sudoku tr td.active');
+        let active = document.querySelector('#sudoku .cell.active');
         switch (e.code) {
-            case 'ArrowUp':    setActive(td, 'up');    break;
-            case 'ArrowRight': setActive(td, 'right'); break;
-            case 'ArrowDown':  setActive(td, 'down');  break;
-            case 'ArrowLeft':  setActive(td, 'left');  break;
+            case 'ArrowUp':    setActive(active, 'up');    break;
+            case 'ArrowRight': setActive(active, 'right'); break;
+            case 'ArrowDown':  setActive(active, 'down');  break;
+            case 'ArrowLeft':  setActive(active, 'left');  break;
             case 'Digit0':
             case 'Numpad0':
             case 'Space':
@@ -76,13 +115,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sudoku.addEventListener('api_getPuzzle', (e) => {
         let body = e.detail.body;
-        sudoku.querySelectorAll('tr').forEach((tr, row) => {
-            tr.querySelectorAll('td').forEach((td, col) => {
-                td.textContent = '';
+        sudoku.querySelectorAll('.row').forEach((elRow, row) => {
+            elRow.querySelectorAll('.cell').forEach((elCell, col) => {
+                placeDigit(elCell, '0', true);
                 let d = body.puzzle[row*9+col];
                 if ('1' <= d && d <= '9') {
-                    td.textContent = d;
-                    td.classList.add('hint');
+                    placeDigit(elCell, d, true);
+                    elCell.classList.add('hint');
                 }
             });
         });
@@ -90,8 +129,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     sudoku.addEventListener('api_makeStep', (e) => {
         let body = e.detail.body;
-        sudoku.querySelectorAll('tr td').forEach((td) => {
-            td.classList.remove('error');
+        sudoku.querySelectorAll('.cell').forEach((cell) => {
+            cell.classList.remove('error');
         });
         if (body.win) {
             sudoku.classList.add('win');
@@ -101,11 +140,11 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         body.errors = parsePoints(body.errors);
-        sudoku.querySelectorAll('tr').forEach((tr, row) => {
-            tr.querySelectorAll('td').forEach((td, col) => {
+        sudoku.querySelectorAll('.row').forEach((elRow, row) => {
+            elRow.querySelectorAll('.cell').forEach((elCell, col) => {
                 body.errors.forEach((p) => {
                     if (p.row === row && p.col === col) {
-                        td.classList.add('error');
+                        elCell.classList.add('error');
                     }
                 });
             });
@@ -129,37 +168,37 @@ document.addEventListener('DOMContentLoaded', () => {
     }, {once: true});
 }, false);
 
-let setActive = (td, dir) => {
-    if (!td) {
-        td = sudoku.querySelectorAll('tr').item(9/2).querySelectorAll('td').item(9/2);
+let setActive = (elCell, dir) => {
+    if (!elCell) {
+        elCell = sudoku.querySelectorAll('.row').item(9/2).querySelectorAll('.cell').item(9/2);
         dir = undefined;
-        if (!td) return;
+        if (!elCell) return;
     }
-    let tr = td.closest('tr');
+    let elRow = elCell.closest('.row');
     if (dir) {
         switch (dir) {
             case 'up':
-                let prev = tr.previousElementSibling;
+                let prev = elRow.previousElementSibling;
                 if (!prev) return;
-                td = prev.querySelectorAll('td').item(getIndex(td));
+                elCell = prev.querySelectorAll('.cell').item(getIndex(elCell));
                 break;
             case 'right':
-                td = td.nextElementSibling; break;
+                elCell = elCell.nextElementSibling; break;
             case 'down':
-                let next = tr.nextElementSibling;
+                let next = elRow.nextElementSibling;
                 if (!next) return;
-                td = next.querySelectorAll('td').item(getIndex(td));
+                elCell = next.querySelectorAll('.cell').item(getIndex(elCell));
                 break;
             case 'left':
-                td = td.previousElementSibling; break;
+                elCell = elCell.previousElementSibling; break;
         }
     }
-    if (!td) return;
-    let isAlreadyActive = td.classList.contains('active');
-    document.querySelectorAll('#sudoku tr td.active').forEach((active) => {
+    if (!elCell) return;
+    let isAlreadyActive = elCell.classList.contains('active');
+    sudoku.querySelectorAll('.cell.active').forEach((active) => {
         active.classList.remove('active');
     });
-    if (!isAlreadyActive) td.classList.add('active');
+    if (!isAlreadyActive) elCell.classList.add('active');
 }
 
 function getIndex(node) {
@@ -200,8 +239,8 @@ let connectWs = () => {
 
 let apiMakeStep = () => {
     let state = '';
-    sudoku.querySelectorAll('tr td').forEach((td) => {
-        let val = td.textContent;
+    sudoku.querySelectorAll('.cell .digit').forEach((cell) => {
+        let val = cell.textContent;
         if (val === '') val = '.';
         state += val;
     });

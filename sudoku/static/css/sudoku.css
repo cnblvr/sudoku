@@ -1,13 +1,115 @@
+html {
+    -ms-touch-action: manipulation;
+    touch-action: manipulation;
+}
 #sudoku {
-    border: 3px solid black;
-    width: 81vh;
-    height: 81vh;
-    margin: 5vh auto 0 auto;
-    border-spacing: 0;
-    border-collapse: collapse;
-    table-layout: fixed;
-    font-size: x-large;
+    min-height: 410px;
+    min-width: 410px;
+    margin: 2.5vh auto;
+    width: 80vh;
+    height: 80vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    border-left: 3px solid black;
+    border-top: 3px solid black;
     user-select: none;
+}
+/* row */
+#sudoku .row {
+    display: flex;
+    flex-direction: row;
+    height: fit-content;
+    flex-basis: calc(100%/9);
+    justify-content: center;
+}
+#sudoku .row:nth-child(3n) {
+    border-bottom: 2px solid black;
+}
+#sudoku .cell:nth-child(3n) {
+    border-right: 2px solid black;
+}
+/* cell */
+#sudoku .cell {
+    border: 1px solid black;
+    display: flex;
+    flex-basis: calc(100%/9);
+    justify-content: center;
+}
+/* hint or answer in cell */
+#sudoku .digit {
+    font-size: calc(2vh + 10px);
+    display: flex;
+    align-items: center;
+    height: 100%;
+}
+#sudoku .cell.is_cands .digit {
+    display: none;
+}
+
+/* candidates */
+#sudoku .cands {
+    font-size: calc(2vh);
+    color: #a0a0a0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+}
+#sudoku .cell.is_digit .cands {
+    display: none;
+}
+/* candidates row */
+#sudoku .cands > div {
+    display: flex;
+    flex-direction: row;
+    flex-basis: calc(100%/3);
+}
+/* candidates cell */
+#sudoku .cands > div > div {
+    padding: 2px;
+    display: flex;
+    flex-basis: calc(100%/3);
+    justify-content: center;
+}
+
+#keyboard {
+    display: flex;
+    height: 8vh;
+    flex-direction: row;
+    justify-content: center;
+    user-select: none;
+}
+#keyboard > div {
+    font-size: calc(2vh + 10px);
+    display: flex;
+    margin: 0 5px;
+    width: 8vh;
+    border: 2px solid black;
+    border-radius: 100%;
+    align-items: center;
+    justify-content: center;
+    background-color: #d0d0d0;
+}
+
+@media (orientation: portrait) {
+    #sudoku {
+        margin: 2.5vw auto;
+        width: 80vw;
+        height: 80vw;
+    }
+    #sudoku .digit {
+        font-size: calc(2vw + 10px);
+    }
+    #sudoku .cands {
+        font-size: calc(2vw);
+    }
+    #keyboard {
+        height: 8vw;
+    }
+    #keyboard > div {
+        width: 8vw;
+        font-size: calc(2vw + 10px);
+    }
 }
 
 #sudoku.win {
@@ -15,54 +117,14 @@
     box-shadow: 0 0 14px 9px #090;
 }
 
-@media (orientation: portrait) {
-    #sudoku {
-        width: 81vw;
-        height: 81vw;
-        margin-top: 5vw;
-    }
-}
-
-#sudoku tr {
-    width: 9vh;
-    height: 9vh;
-}
-
-@media (orientation: portrait) {
-    #sudoku tr {
-        width: 9vw;
-        height: 9vw;
-    }
-}
-
-#sudoku tr td {
-    border: 1px solid black;
-    text-align: center;
-    line-height: 9vh;
-}
-
-#sudoku tr td.active {
+#sudoku .cell.active {
     background: #d0d0d0 !important;
 }
 
-#sudoku tr td.hint {
+#sudoku .cell.hint {
     background: #f4f4f4;
 }
 
-#sudoku tr td.error {
+#sudoku .cell.error .digit {
     color: #ff0000;
-}
-
-@media (orientation: portrait) {
-    #sudoku tr td {
-        line-height: 9vw;
-    }
-}
-
-#sudoku tr:nth-child(3n) {
-    border-bottom: 2px solid black;
-}
-
-#sudoku tr td:nth-child(3n) {
-    border-right: 2px solid black;
 }
