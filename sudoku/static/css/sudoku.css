@@ -59,17 +59,20 @@ html {
     display: none;
 }
 /* candidates row */
-#sudoku .cands > div {
+#sudoku .cands .crow {
     display: flex;
     flex-direction: row;
     flex-basis: calc(100%/3);
 }
 /* candidates cell */
-#sudoku .cands > div > div {
+#sudoku .cands .ccell {
     padding: 2px;
     display: flex;
     flex-basis: calc(100%/3);
     justify-content: center;
+}
+#sudoku .cands .ccell.hidden {
+    display: none;
 }
 
 #keyboard {

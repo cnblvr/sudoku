@@ -27,3 +27,17 @@ func (dt *DateTime) UnmarshalJSON(data []byte) error {
 	*dt = DateTime{t}
 	return nil
 }
+
+type SudokuCandidates map[Point][]int8
+
+func (cl SudokuCandidates) MarshalJSON() ([]byte, error) {
+	out := make(map[string][]int8)
+	for p, c := range cl {
+		out[p.String()] = c
+	}
+	return json.Marshal(out)
+}
+
+//func (cl *SudokuCandidates) UnmarshalJSON(data []byte) error {
+//	return nil
+//}

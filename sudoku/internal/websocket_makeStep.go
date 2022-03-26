@@ -91,7 +91,7 @@ func (r websocketMakeStepRequest) Execute(ctx context.Context) (websocketRespons
 type websocketMakeStepResponse struct {
 	Errors     []data.Point          `json:"errors,omitempty"`
 	Win        bool                  `json:"win,omitempty"`
-	Candidates map[data.Point][]int8 `json:"candidates,omitempty"`
+	Candidates data.SudokuCandidates `json:"candidates,omitempty"`
 }
 
 func (websocketMakeStepResponse) Method() string {

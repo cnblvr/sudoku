@@ -3,6 +3,8 @@ package sudoku
 import (
 	"context"
 	"fmt"
+	"github.com/cnblvr/sudoku/data"
+	"github.com/cnblvr/sudoku/library_puzzles"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -11,7 +13,8 @@ func init() {
 }
 
 type websocketGetPuzzleRequest struct {
-	GameID string `json:"game_id"`
+	GameID         string `json:"game_id"`
+	NeedCandidates bool   `json:"need_candidates,omitempty"`
 }
 
 func (websocketGetPuzzleRequest) Method() string {
@@ -41,14 +44,25 @@ func (r websocketGetPuzzleRequest) Execute(ctx context.Context) (websocketRespon
 		return websocketGetPuzzleResponse{}, fmt.Errorf("internal server error")
 	}
 
-	return websocketGetPuzzleResponse{
+	resp := websocketGetPuzzleResponse{
 		Puzzle: sudoku.Puzzle,
-	}, nil
+	}
+
+	generator, err := library_puzzles.GetGenerator(sudoku.Type)
+	if err != nil {
+		return websocketGetPuzzleResponse{}, fmt.Errorf("internal server error")
+	}
+	if r.NeedCandidates {
+		resp.Candidates = generator.GetCandidates(ctx, sudoku.Puzzle)
+	}
+
+	return resp, nil
 }
 
 // TODO handle and test
 type websocketGetPuzzleResponse struct {
-	Puzzle string `json:"puzzle"`
+	Puzzle     string                `json:"puzzle"`
+	Candidates data.SudokuCandidates `json:"candidates,omitempty"`
 }
 
 func (websocketGetPuzzleResponse) Method() string {

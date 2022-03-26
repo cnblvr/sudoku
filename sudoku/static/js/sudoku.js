@@ -24,10 +24,11 @@ document.addEventListener('DOMContentLoaded', () => {
             elCands.classList.add('cands');
             for (let crow = 0; crow < 3; crow++) {
                 let elCandsRow = document.createElement('div');
+                elCandsRow.classList.add('crow');
                 for (let ccol = 0; ccol < 3; ccol++) {
                     let elCand = document.createElement('div');
                     let cval = crow*3+ccol+1;
-                    elCand.classList.add('c'+cval);
+                    elCand.classList.add('ccell', 'c'+cval, 'hidden');
                     elCand.textContent = ''+cval;
                     elCandsRow.appendChild(elCand);
                 }
@@ -123,6 +124,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     placeDigit(elCell, d, true);
                     elCell.classList.add('hint');
                 }
+                if (body.candidates) {
+                    setCandidatesFor(elCell, body.candidates[stringifyPoint(row, col)]);
+                }
             });
         });
     });
@@ -136,9 +140,6 @@ document.addEventListener('DOMContentLoaded', () => {
             sudoku.classList.add('win');
             return;
         }
-        if (!body.errors) {
-            return;
-        }
         body.errors = parsePoints(body.errors);
         sudoku.querySelectorAll('.row').forEach((elRow, row) => {
             elRow.querySelectorAll('.cell').forEach((elCell, col) => {
@@ -147,6 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         elCell.classList.add('error');
                     }
                 });
+                if (body.candidates) {
+                    setCandidatesFor(elCell, body.candidates[stringifyPoint(row, col)]);
+                }
             });
         });
     });
@@ -164,9 +168,23 @@ document.addEventListener('DOMContentLoaded', () => {
         game_id = document.querySelector('#_game_id').textContent;
         wsApi('getPuzzle', {
             game_id: game_id,
+            need_candidates: true,
         });
     }, {once: true});
 }, false);
+
+let setCandidatesFor = (cell, cands) => {
+    if (!cell || !cands) return;
+    cell.querySelectorAll('.cands .crow').forEach((crow, row) => {
+        crow.querySelectorAll('.ccell').forEach((ccell, col) => {
+            if (cands.includes(ccell.textContent.charCodeAt(0)-'0'.charCodeAt(0))) {
+                ccell.classList.remove('hidden');
+            } else {
+                ccell.classList.add('hidden');
+            }
+        });
+    });
+}
 
 let setActive = (elCell, dir) => {
     if (!elCell) {
@@ -247,6 +265,7 @@ let apiMakeStep = () => {
     wsApi('makeStep', {
         game_id: game_id,
         state: state,
+        need_candidates: true,
     })
 }
 
@@ -261,6 +280,7 @@ let wsApi = (method, body) => {
 }
 
 let parsePoints = (points) => {
+    if (!points) return [];
     let out = [];
     points.forEach((p) => {
         out = out.concat([{
@@ -269,4 +289,8 @@ let parsePoints = (points) => {
         }]);
     });
     return out;
+}
+
+let stringifyPoint = (row, col) => {
+    return String.fromCharCode((row)+'a'.charCodeAt(0)) + (col+1);
 }
