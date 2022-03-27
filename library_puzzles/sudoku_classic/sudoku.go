@@ -4,16 +4,32 @@ import (
 	"context"
 	"fmt"
 	"github.com/cnblvr/sudoku/data"
-	stdlog "log"
 	"math/rand"
 	"strconv"
 )
 
 type Generator struct{}
 
+func (Generator) Type() data.SudokuType {
+	return data.SudokuClassic
+}
+
+func getMinMaxHintsOfLevel(level data.SudokuLevel) (int, int) {
+	switch level {
+	case data.SudokuRandomEasy:
+		return 33, 37
+	case data.SudokuRandomMedium:
+		return 28, 32
+	case data.SudokuRandomHard:
+		return 23, 27
+	default:
+		return 0, 0
+	}
+}
+
 // Generate returns puzzle and solution.
 // seed is used to create a unique puzzle.
-func (Generator) Generate(ctx context.Context, seed int64) (string, string) {
+func (Generator) Generate(ctx context.Context, seed int64, level data.SudokuLevel) (string, string, error) {
 	// randomizer for full puzzle generation
 	rnd := rand.New(rand.NewSource(seed))
 
@@ -51,30 +67,29 @@ func (Generator) Generate(ctx context.Context, seed int64) (string, string) {
 		copy(puzzle[row], solution[row])
 	}
 
-	removes := 81
-mainFor:
-	for removes > 0 {
-		removes = 0
-		for _, p := range sudokuRandomPoints(rnd) {
-			if removes >= 46 {
-				break mainFor // todo level
-			}
-			digit := puzzle[p.Row][p.Col]
-			if digit == 0 {
-				continue
-			}
-			puzzle[p.Row][p.Col] = 0
-			if len(puzzle.solveBruteForce(2)) != 1 {
-				puzzle[p.Row][p.Col] = digit
-				continue
-			} else {
-				removes++
-			}
+	min, max := getMinMaxHintsOfLevel(level)
+	needHints := (rnd.Int() % (max - min + 1)) + min
+	rndPoints := sudokuRandomPoints(rnd)
+	removes := 0
+	for _, p := range rndPoints {
+		digit := puzzle[p.Row][p.Col]
+		if digit == 0 {
+			continue
 		}
-		stdlog.Printf("iteration. removes: %d", removes)
+		puzzle[p.Row][p.Col] = 0
+		if len(puzzle.solveBruteForce(2)) != 1 {
+			puzzle[p.Row][p.Col] = digit
+			continue
+		} else {
+			removes++
+		}
+
+		if needHints >= 81-removes {
+			break
+		}
 	}
 
-	return puzzle.String(), solution.String()
+	return puzzle.String(), solution.String(), nil
 }
 
 func (Generator) GetCandidates(ctx context.Context, puzzle string) map[data.Point][]int8 {

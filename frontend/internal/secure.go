@@ -1,4 +1,4 @@
-package sudoku
+package frontend
 
 import (
 	"crypto/rand"
@@ -19,7 +19,7 @@ func (srv *Service) createAuthCookie(w http.ResponseWriter, a *data.Auth) error 
 		Name:     "auth",
 		Value:    value,
 		Path:     "/",
-		Expires:  time.Now().Add(time.Minute),
+		Expires:  time.Now().Add(time.Hour * 24),
 		HttpOnly: true,
 	}
 	http.SetCookie(w, c)

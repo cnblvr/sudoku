@@ -1,6 +1,9 @@
 {{define "page_index"}}{{template "header" .Header}}{{$auth := .Auth}}{{$data := .Data}}
 <p>Hello{{if $auth.IsAuthorized}}, <a href="/info">{{$data.Username}}{{end}}</a>. This is a Sudoku game.</p>
 <form action="/sudoku/play" method="get">
+    <label><input type="radio" name="level" value="r_easy">Easy</label>
+    <label><input type="radio" name="level" value="r_medium" checked="checked">Medium</label>
+    <label><input type="radio" name="level" value="r_hard">Hard</label>
     <button type="submit">Play{{if not $auth.IsAuthorized}} as anonymous{{end}}</button>{{if not $auth.IsAuthorized}} or <a href="/login">log in</a> or <a href="/signup">sign up</a>{{end}}
 </form>
 {{if $auth.IsAuthorized}}<form action="/logout" method="get">

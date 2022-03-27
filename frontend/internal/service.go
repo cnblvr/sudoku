@@ -1,10 +1,10 @@
-package sudoku
+package frontend
 
 import (
 	"encoding/base64"
 	"github.com/cnblvr/sudoku/data"
+	"github.com/cnblvr/sudoku/frontend/templates"
 	"github.com/cnblvr/sudoku/repository"
-	"github.com/cnblvr/sudoku/sudoku/templates"
 	"github.com/gomodule/redigo/redis"
 	"github.com/gorilla/securecookie"
 	"github.com/gorilla/websocket"

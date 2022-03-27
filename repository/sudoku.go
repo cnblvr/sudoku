@@ -10,7 +10,7 @@ import (
 	"time"
 )
 
-func (r *RedisRepository) CreateSudoku(ctx context.Context, typ data.SudokuType, seed int64, puzzle, solution string) (*data.Sudoku, error) {
+func (r *RedisRepository) CreateSudoku(ctx context.Context, typ data.SudokuType, seed int64, level data.SudokuLevel, puzzle, solution string) (*data.Sudoku, error) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
@@ -23,6 +23,7 @@ func (r *RedisRepository) CreateSudoku(ctx context.Context, typ data.SudokuType,
 		ID:        id,
 		Type:      typ,
 		Seed:      seed,
+		Level:     level,
 		Puzzle:    puzzle,
 		Solution:  solution,
 		CreatedAt: data.DateTime{Time: time.Now().UTC()},
@@ -31,6 +32,14 @@ func (r *RedisRepository) CreateSudoku(ctx context.Context, typ data.SudokuType,
 	if err := r.putSudoku(ctx, conn, sudoku); err != nil {
 		return nil, errors.WithStack(err)
 	}
+
+	if _, err := conn.Do("SADD", keySudokuLevel(sudoku.Level), sudoku.ID); err != nil {
+		return nil, errors.Wrap(err, "failed to save sudoku to level store")
+	}
+	if _, err := conn.Do("HSET", keySudokuSeeds(), seed, sudoku.ID); err != nil {
+		return nil, errors.Wrap(err, "failed to save sudoku to seed store")
+	}
+
 	return sudoku, nil
 }
 
@@ -42,6 +51,34 @@ func (r *RedisRepository) GetSudokuByID(ctx context.Context, id int64) (*data.Su
 	if err != nil {
 		return nil, errors.WithStack(err)
 	}
+	return sudoku, nil
+}
+
+func (r *RedisRepository) IsExistsSeed(ctx context.Context, seed int64) (bool, error) {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	isExists, err := redis.Bool(conn.Do("HEXISTS", keySudokuSeeds(), seed))
+	if err != nil {
+		return false, errors.Wrap(err, "failed to check existence of seed")
+	}
+
+	return isExists, nil
+}
+
+func (r *RedisRepository) GetRandomSudokuByLevel(ctx context.Context, level data.SudokuLevel) (*data.Sudoku, error) {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	id, err := redis.Int64(conn.Do("SRANDMEMBER", keySudokuLevel(level)))
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get random sudoku by level")
+	}
+	sudoku, err := r.getSudoku(ctx, conn, id)
+	if err != nil {
+		return nil, errors.WithStack(err)
+	}
+
 	return sudoku, nil
 }
 
@@ -81,4 +118,12 @@ func keyLastSudokuID() string {
 
 func keySudoku(id int64) string {
 	return fmt.Sprintf("sudoku:%d", id)
+}
+
+func keySudokuSeeds() string {
+	return "sudoku_seeds"
+}
+
+func keySudokuLevel(level data.SudokuLevel) string {
+	return fmt.Sprintf("sudoku_level:%s", level.String())
 }

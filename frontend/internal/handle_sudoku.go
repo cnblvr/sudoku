@@ -1,10 +1,10 @@
-package sudoku
+package frontend
 
 import (
 	"fmt"
 	"github.com/cnblvr/sudoku/data"
-	"github.com/cnblvr/sudoku/sudoku/static"
-	"github.com/cnblvr/sudoku/sudoku/templates"
+	"github.com/cnblvr/sudoku/frontend/static"
+	"github.com/cnblvr/sudoku/frontend/templates"
 	"github.com/gorilla/mux"
 	uuid "github.com/satori/go.uuid"
 	"net/http"

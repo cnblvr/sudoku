@@ -1,8 +1,8 @@
 package main
 
 import (
-	sudoku "github.com/cnblvr/sudoku/sudoku/internal"
-	"github.com/cnblvr/sudoku/sudoku/static"
+	frontend "github.com/cnblvr/sudoku/frontend/internal"
+	"github.com/cnblvr/sudoku/frontend/static"
 	"github.com/gorilla/mux"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -16,10 +16,10 @@ func main() {
 		w.TimeFormat = "2006-01-02 15:04:05.000000Z"
 	})).With().Timestamp().Caller().Logger()
 
-	// Initialize Sudoku service
-	srv, err := sudoku.NewService()
+	// Initialize Frontend service
+	srv, err := frontend.NewService()
 	if err != nil {
-		log.Fatal().Err(err).Msg("sudoku.NewService failed")
+		log.Fatal().Err(err).Msg("frontend.NewService failed")
 	}
 
 	r := mux.NewRouter()

@@ -1,9 +1,9 @@
-package sudoku
+package frontend
 
 import (
 	"fmt"
 	"github.com/cnblvr/sudoku/data"
-	"github.com/cnblvr/sudoku/sudoku/templates"
+	"github.com/cnblvr/sudoku/frontend/templates"
 	"github.com/pkg/errors"
 	"net/http"
 	"strings"

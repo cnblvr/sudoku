@@ -1,8 +1,7 @@
-package sudoku
+package frontend
 
 import (
 	"github.com/cnblvr/sudoku/data"
-	"github.com/cnblvr/sudoku/library_puzzles"
 	"net/http"
 )
 
@@ -10,20 +9,12 @@ import (
 func (srv *Service) HandleSudokuCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	auth, log := getAuth(ctx), getLogger(ctx)
-	const seed = int64(3) // todo seed
-	const typ = data.SudokuClassic
 
 	var sudokuGame *data.SudokuGame
 	status := func() int {
-		generator, err := library_puzzles.GetGenerator(typ)
+		sudoku, err := srv.sudokuRepository.GetRandomSudokuByLevel(ctx, data.SudokuLevel(r.URL.Query().Get("level")))
 		if err != nil {
-			log.Error().Err(err).Msg("failed to get generator")
-			return http.StatusBadRequest
-		}
-		puzzle, solution := generator.Generate(ctx, seed)
-		sudoku, err := srv.sudokuRepository.CreateSudoku(ctx, typ, seed, puzzle, solution)
-		if err != nil {
-			log.Error().Err(err).Msg("failed to create new sudoku")
+			log.Error().Err(err).Msg("failed to get sudoku")
 			return http.StatusInternalServerError
 		}
 		sudokuGame, err = srv.sudokuRepository.CreateSudokuGame(ctx, sudoku.ID, auth.ID)

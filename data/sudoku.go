@@ -15,16 +15,18 @@ var (
 )
 
 type SudokuGenerator interface {
-	Generate(ctx context.Context, seed int64) (string, string)
+	Type() SudokuType
+	Generate(ctx context.Context, seed int64, level SudokuLevel) (string, string, error)
 	GetCandidates(ctx context.Context, puzzle string) map[Point][]int8
 	FindUserErrors(ctx context.Context, userState string) []Point
 }
 
 type SudokuRepository interface {
 	// Errors: unknown.
-	CreateSudoku(ctx context.Context, typ SudokuType, seed int64, puzzle, solution string) (*Sudoku, error)
+	CreateSudoku(ctx context.Context, typ SudokuType, seed int64, level SudokuLevel, puzzle, solution string) (*Sudoku, error)
 	// Errors: ErrSudokuNotFound, unknown.
 	GetSudokuByID(ctx context.Context, id int64) (*Sudoku, error)
+	GetRandomSudokuByLevel(ctx context.Context, level SudokuLevel) (*Sudoku, error)
 
 	CreateSudokuGame(ctx context.Context, sudokuID, userID int64) (*SudokuGame, error)
 	// Errors: ErrSudokuNotFound, ErrUserNotFound, unknown.
@@ -37,13 +39,18 @@ type SudokuRepository interface {
 	GetSudokuGameSteps(ctx context.Context, id uuid.UUID) ([]*SudokuStep, error)
 }
 
+type SudokuGenerateRepository interface {
+	IsExistsSeed(ctx context.Context, seed int64) (bool, error)
+}
+
 type Sudoku struct {
-	ID        int64      `json:"id"`
-	Type      SudokuType `json:"type"`
-	Seed      int64      `json:"seed"`
-	Puzzle    string     `json:"puzzle"`
-	Solution  string     `json:"solution"`
-	CreatedAt DateTime   `json:"created_at"`
+	ID        int64       `json:"id"`
+	Type      SudokuType  `json:"type"`
+	Seed      int64       `json:"seed"`
+	Level     SudokuLevel `json:"level"`
+	Puzzle    string      `json:"puzzle"`
+	Solution  string      `json:"solution"`
+	CreatedAt DateTime    `json:"created_at"`
 }
 
 type SudokuGame struct {
@@ -63,6 +70,18 @@ type SudokuType string
 const (
 	SudokuClassic SudokuType = "sudoku_classic"
 )
+
+type SudokuLevel string
+
+const (
+	SudokuRandomEasy   SudokuLevel = "r_easy"
+	SudokuRandomMedium SudokuLevel = "r_medium"
+	SudokuRandomHard   SudokuLevel = "r_hard"
+)
+
+func (l SudokuLevel) String() string {
+	return string(l)
+}
 
 // DirectionType is a direction of line/"big" line/some kind of field change.
 type DirectionType uint8

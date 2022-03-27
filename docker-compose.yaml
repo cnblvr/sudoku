@@ -12,16 +12,28 @@ services:
     ports:
       - "6379:6379"
 
-# application sudoku service
-  app:
+# application frontend sudoku service
+  frontend:
     build:
       context: .
-      dockerfile: sudoku.Dockerfile
+      dockerfile: frontend.Dockerfile
     depends_on:
       - redis
-    container_name: sudoku
+    container_name: frontend
     restart: always
     ports:
       - "8080:8080"
+    env_file:
+      - dev.env
+
+# generator sudoku service
+  generator:
+    build:
+      context: .
+      dockerfile: generator.Dockerfile
+    depends_on:
+      - redis
+    container_name: generator
+    restart: always
     env_file:
       - dev.env

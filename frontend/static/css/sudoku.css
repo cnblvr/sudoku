@@ -44,7 +44,7 @@ html {
     height: 100%;
 }
 #sudoku .cell.is_cands .digit {
-    display: none;
+    opacity: 0;
 }
 
 /* candidates */
@@ -72,7 +72,7 @@ html {
     justify-content: center;
 }
 #sudoku .cands .ccell.hidden {
-    display: none;
+    opacity: 0;
 }
 
 #keyboard {
