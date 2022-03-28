@@ -16,6 +16,7 @@ var JS embed.FS
 
 const (
 	JsSudoku = "sudoku"
+	JsWs     = "ws"
 )
 
 // Favicon is a website icon file.

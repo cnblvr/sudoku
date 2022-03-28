@@ -28,10 +28,10 @@ type Header struct {
 	Title string
 	// List of css that are used on the page.
 	Css []string
+	// List of js that are used on the page.
+	Js []string
 }
 
 // Footer is placed in the common 'footer' template.
 type Footer struct {
-	// List of js that are used on the page.
-	Js []string
 }

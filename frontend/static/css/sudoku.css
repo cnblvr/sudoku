@@ -1,133 +1,87 @@
-html {
-    -ms-touch-action: manipulation;
-    touch-action: manipulation;
-}
-#sudoku {
-    min-height: 410px;
-    min-width: 410px;
-    margin: 2.5vh auto;
-    width: 80vh;
-    height: 80vh;
+.sudoku {
     display: flex;
     flex-direction: column;
-    justify-content: center;
-    border-left: 3px solid black;
-    border-top: 3px solid black;
+
+    border: solid black;
+    border-width: 3px 0 0 3px;
     user-select: none;
 }
-/* row */
-#sudoku .row {
+.sud-row {
     display: flex;
-    flex-direction: row;
-    height: fit-content;
-    flex-basis: calc(100%/9);
-    justify-content: center;
-}
-#sudoku .row:nth-child(3n) {
-    border-bottom: 2px solid black;
-}
-#sudoku .cell:nth-child(3n) {
-    border-right: 2px solid black;
-}
-/* cell */
-#sudoku .cell {
-    border: 1px solid black;
-    display: flex;
-    flex-basis: calc(100%/9);
-    justify-content: center;
-}
-/* hint or answer in cell */
-#sudoku .digit {
-    font-size: calc(2vh + 10px);
-    display: flex;
-    align-items: center;
+    flex-wrap: nowrap;
+
     height: 100%;
 }
-#sudoku .cell.is_cands .digit {
+.sud-row:nth-child(3n) {
+    border-bottom: 3px solid black;
+}
+.sud-cll:nth-child(3n) {
+    border-right: 3px solid black;
+}
+.sud-cll {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+
+    width: 100%;
+    height: 100%;
+}
+.sud-cll.active {
+    background: #d0d0d0 !important;
+}
+.sud-cll.hint {
+    background: #f4f4f4;
+}
+.sud-row:nth-child(3n+1), .sud-row:nth-child(3n+2) {
+    border-bottom: 1px solid black;
+}
+.sud-cll:nth-child(3n+1), .sud-cll:nth-child(3n+2) {
+    border-right: 1px solid black;
+}
+
+.sud-dgt {
+    font-size: calc(2vh + 10px);
+}
+.sud-cll.error .sud-dgt {
+    color: #ff0000;
+}
+
+.sud-cnd {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    width: 100%;
+    height: 100%;
+    color: #a0a0a0;
+    font-size: calc(2vh); /* TODO */
+}
+.sud-cnd span {
+    flex-basis: calc(100%/3);
+    text-align: center;
+}
+.sud-cnd span.hidden {
     opacity: 0;
 }
 
-/* candidates */
-#sudoku .cands {
-    font-size: calc(2vh);
-    color: #a0a0a0;
-    width: 100%;
-    display: flex;
-    flex-direction: column;
-}
-#sudoku .cell.is_digit .cands {
+.sud-cll.is-cnd .sud-dgt {
     display: none;
 }
-/* candidates row */
-#sudoku .cands .crow {
-    display: flex;
-    flex-direction: row;
-    flex-basis: calc(100%/3);
-}
-/* candidates cell */
-#sudoku .cands .ccell {
-    padding: 2px;
-    display: flex;
-    flex-basis: calc(100%/3);
-    justify-content: center;
-}
-#sudoku .cands .ccell.hidden {
-    opacity: 0;
+.sud-cll.is-dgt .sud-cnd {
+    display: none;
 }
 
-#keyboard {
-    display: flex;
-    height: 8vh;
-    flex-direction: row;
-    justify-content: center;
-    user-select: none;
+.keyboard {
+    /* TODO */
 }
-#keyboard > div {
-    font-size: calc(2vh + 10px);
-    display: flex;
-    margin: 0 5px;
-    width: 8vh;
-    border: 2px solid black;
-    border-radius: 100%;
-    align-items: center;
-    justify-content: center;
-    background-color: #d0d0d0;
+.kb-btn {
+    /* TODO */
 }
 
 @media (orientation: portrait) {
-    #sudoku {
-        margin: 2.5vw auto;
+    .sudoku {
         width: 80vw;
         height: 80vw;
     }
-    #sudoku .digit {
-        font-size: calc(2vw + 10px);
-    }
-    #sudoku .cands {
-        font-size: calc(2vw);
-    }
-    #keyboard {
-        height: 8vw;
-    }
-    #keyboard > div {
-        width: 8vw;
-        font-size: calc(2vw + 10px);
-    }
-}
-
-#sudoku.win {
-    border-color: #009900;
-    box-shadow: 0 0 14px 9px #090;
-}
-
-#sudoku .cell.active {
-    background: #d0d0d0 !important;
-}
-
-#sudoku .cell.hint {
-    background: #f4f4f4;
-}
-
-#sudoku .cell.error .digit {
-    color: #ff0000;
+    /* TODO */
 }

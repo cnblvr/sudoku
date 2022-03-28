@@ -48,11 +48,10 @@ func (srv *Service) HandleSudoku(w http.ResponseWriter, r *http.Request) {
 		Header: templates.Header{
 			Title: fmt.Sprintf("sudoku"),
 			Css:   []string{static.CssSudoku},
+			Js:    []string{static.JsSudoku, static.JsWs},
 		},
-		Data: d,
-		Footer: templates.Footer{
-			Js: []string{static.JsSudoku},
-		},
+		Data:   d,
+		Footer: templates.Footer{},
 	}
 	srv.executeTemplate(w, "page_sudoku", args)
 }

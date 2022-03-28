@@ -1,5 +1,21 @@
 {{define "page_sudoku"}}{{template "header" .Header}}{{$data := .Data}}
-<table id="sudoku"></table><div id="keyboard"></div><p id="_game_id" hidden>{{$data.GameID}}</p>
+<table id="board" class="sudoku" style="width: 80vh; height: 80vh; margin: 30px;"></table><div id="keyboard"></div><p id="_game_id" hidden>{{$data.GameID}}</p>
 {{with $data.ErrorMessage}}<p>{{.}} Go to <a href="/">home page</a>.</p>
 {{end}}<p>Back to the <a href="/">main page</a>.</p>
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        let s = new Sudoku({
+            selector: '#board',
+            allowEditing: true,
+            keyboardSelector: '#keyboard',
+            gameID: document.querySelector('#_game_id').textContent
+        });
+        let ws = new WS({
+            url: 'ws://'+location.host+'/ws',
+            debug: true,
+            sudoku: s
+        });
+        s.connectWS(ws);
+    });
+</script>
 {{template "footer" .Footer}}{{end}}

@@ -1,296 +1,265 @@
-let ws = undefined;
-let game_id = undefined;
-let sudoku = undefined;
+'use strict';
 
-document.addEventListener('DOMContentLoaded', () => {
-    sudoku = document.querySelector('#sudoku');
+class Sudoku {
+    #_object;
+    #_keyboard;
+    #isWin = false;
+    #gameID;
+    #ws;
 
-    // Creating board in table element.
-    for (let row = 0; row < 9; row++) {
-        let elRow = document.createElement('div');
-        elRow.classList.add('row');
-        for (let col = 0; col < 9; col++) {
-            let elCell = document.createElement('div');
-            elCell.classList.add('cell');
-            elCell.id = String.fromCharCode('a'.charCodeAt(0)+row)+(col+1); // TODO remove
-
-            // digit place
-            let elDigit = document.createElement('div');
-            elDigit.classList.add('digit');
-            elCell.appendChild(elDigit);
-
-            // candidates place
-            let elCands = document.createElement('div');
-            elCands.classList.add('cands');
-            for (let crow = 0; crow < 3; crow++) {
-                let elCandsRow = document.createElement('div');
-                elCandsRow.classList.add('crow');
-                for (let ccol = 0; ccol < 3; ccol++) {
-                    let elCand = document.createElement('div');
-                    let cval = crow*3+ccol+1;
-                    elCand.classList.add('ccell', 'c'+cval, 'hidden');
-                    elCand.textContent = ''+cval;
-                    elCandsRow.appendChild(elCand);
-                }
-                elCands.appendChild(elCandsRow);
+    constructor(param) {
+        if (!param)
+            throw 'sudoku: parameters not defined';
+        if (!param.selector || typeof param.selector !== 'string')
+            throw 'sudoku: required parameter \'selector\' is not defined or not string';
+        if (!param.gameID || typeof param.gameID !== 'string')
+            throw 'sudoku: required parameter \'gameID\' is not defined or not string';
+        this.#gameID = param.gameID;
+        this.#_object = document.querySelector(param.selector);
+        if (!this.#_object)
+            throw 'sudoku: object by parameter \'selector\' not found';
+        if (param.allowEditing) {
+            if (typeof param.allowEditing !== 'boolean')
+                throw 'sudoku: parameter \'allowEditing\' is not boolean';
+            if (param.keyboardSelector) {
+                if (typeof param.keyboardSelector !== 'string')
+                    throw 'sudoku: parameter \'keyboardSelector\' is not string';
+                this.#_keyboard = document.querySelector(param.keyboardSelector);
+                if (!this.#_keyboard)
+                    throw 'sudoku: object by parameter \'keyboardSelector\' not found';
             }
-            elCell.appendChild(elCands);
-
-            elRow.appendChild(elCell);
         }
-        sudoku.appendChild(elRow);
-    }
 
-    // Creating event handlers for all cells.
-    sudoku.querySelectorAll('.cell').forEach((cell) => {
-        cell.addEventListener('mouseup', function(e) {
-            setActive(cell);
-        });
-    });
-
-    let placeDigit = (elCell, digit, notMakeStep) => {
-        if (sudoku.classList.contains('win')) return;
-        if (!elCell || elCell.classList.contains('hint')) return;
-        let elDigit = elCell.querySelector('.digit');
-        let oldDigit = elDigit.textContent===''?'0':elDigit.textContent;
-        elCell.classList.remove('is_digit', 'is_cands');
-        if (digit === '0') {
-            elDigit.textContent = '';
-            elCell.classList.add('is_cands');
-        } else {
-            elDigit.textContent = digit;
-            elCell.classList.add('is_digit');
-        }
-        if (!notMakeStep && oldDigit !== digit) apiMakeStep();
-    };
-
-    let placeDigitInActive = (digit, notMakeStep) => {
-        if (sudoku.classList.contains('win')) return;
-        placeDigit(sudoku.querySelector('.cell.active'), digit, notMakeStep);
-    };
-
-    let keyboard = document.querySelector('#keyboard');
-    if (keyboard !== undefined) {
-        let createButton = (id, label, event) => {
-            let button = document.createElement('div');
-            button.classList.add('keyboard-button');
-            button.id = id;
-            button.textContent = label;
-            button.addEventListener('click', event);
-            keyboard.appendChild(button);
-        }
-        createButton('buttonC', 'c', (e) => {
-            console.log('TODO set candidates');
-        });
-        createButton('button0', '⨯', (e) => {
-            placeDigitInActive('0');
-        });
-        for (let digit = 1; digit <= 9; digit++) {
-            createButton('button'+digit, digit, (e) => {
-                placeDigitInActive(''+digit);
-            });
-        }
-    }
-
-    // Creating keyup and digit input handlers on document.
-    document.addEventListener('keydown', (e) => {
-        if (e.defaultPrevented) {
-            return;
-        }
-        let active = document.querySelector('#sudoku .cell.active');
-        switch (e.code) {
-            case 'ArrowUp':    setActive(active, 'up');    break;
-            case 'ArrowRight': setActive(active, 'right'); break;
-            case 'ArrowDown':  setActive(active, 'down');  break;
-            case 'ArrowLeft':  setActive(active, 'left');  break;
-            case 'Digit0':
-            case 'Numpad0':
-            case 'Space':
-            case 'Backspace':
-                placeDigitInActive('0');
-        }
-        if ('1' <= e.key && e.key <= '9') {
-            placeDigitInActive(e.key);
-        }
-    });
-
-    sudoku.addEventListener('api_getPuzzle', (e) => {
-        let body = e.detail.body;
-        sudoku.querySelectorAll('.row').forEach((elRow, row) => {
-            elRow.querySelectorAll('.cell').forEach((elCell, col) => {
-                placeDigit(elCell, '0', true);
-                let d = body.puzzle[row*9+col];
-                if ('1' <= d && d <= '9') {
-                    placeDigit(elCell, d, true);
-                    elCell.classList.add('hint');
+        for (let row = 0; row < 9; row++) {
+            let _row = document.createElement('div');
+            _row.classList.add('sud-row');
+            for (let col = 0; col < 9; col++) {
+                let _cell = document.createElement('div');
+                _cell.classList.add('sud-cll', 'is-cnd');
+                // create digit field
+                let _dgt = document.createElement('div');
+                _dgt.classList.add('sud-dgt');
+                _cell.appendChild(_dgt);
+                // create table of candidates
+                let _cnd = document.createElement('div');
+                _cnd.classList.add('sud-cnd');
+                for (let idx = 1; idx <= 9; idx++) {
+                    let _cndItem = document.createElement('span');
+                    _cndItem.textContent = ''+idx;
+                    _cnd.appendChild(_cndItem);
                 }
-                if (body.candidates) {
-                    setCandidatesFor(elCell, body.candidates[stringifyPoint(row, col)]);
+                _cell.appendChild(_cnd);
+                _row.appendChild(_cell);
+            }
+            this.#_object.appendChild(_row);
+        }
+
+        if (this.#_keyboard) {
+            let createBtn = (label, event) => {
+                let btn = document.createElement('div');
+                btn.classList.add('kb-btn');
+                btn.textContent = label;
+                btn.addEventListener('click', event);
+                this.#_keyboard.appendChild(btn);
+            }
+            createBtn( 'c', (e) => {
+                console.log('TODO set candidates');
+            });
+            createBtn( '⨯', (e) => {
+                this.#placeDigitInActive('0');
+            });
+            for (let digit = 1; digit <= 9; digit++) {
+                createBtn(digit, (e) => {
+                    this.#placeDigitInActive(''+digit);
+                });
+            }
+        }
+
+        if (param.allowEditing) {
+            this.#_object.querySelectorAll('.sud-cll').forEach((_cell) => {
+                _cell.addEventListener('mouseup', (e) => {
+                    this.#setActive(_cell);
+                });
+            });
+
+            document.addEventListener('keyup', (e) => {
+                if (e.defaultPrevented) {
+                    return;
+                }
+                let _a = this.#_object.querySelector('.sud-cll.active');
+                switch (e.code) {
+                    case 'ArrowUp':    this.#setActive(_a, 'up');    break;
+                    case 'ArrowRight': this.#setActive(_a, 'right'); break;
+                    case 'ArrowDown':  this.#setActive(_a, 'down');  break;
+                    case 'ArrowLeft':  this.#setActive(_a, 'left');  break;
+                    case 'Digit0':
+                    case 'Numpad0':
+                    case 'Space':
+                    case 'Backspace':
+                        this.#placeDigitInActive('0');
+                }
+                if ('1' <= e.key && e.key <= '9') {
+                    this.#placeDigitInActive(e.key);
                 }
             });
-        });
-    });
-
-    sudoku.addEventListener('api_makeStep', (e) => {
-        let body = e.detail.body;
-        sudoku.querySelectorAll('.cell').forEach((cell) => {
-            cell.classList.remove('error');
-        });
-        if (body.win) {
-            sudoku.classList.add('win');
-            return;
         }
-        body.errors = parsePoints(body.errors);
-        sudoku.querySelectorAll('.row').forEach((elRow, row) => {
-            elRow.querySelectorAll('.cell').forEach((elCell, col) => {
-                body.errors.forEach((p) => {
-                    if (p.row === row && p.col === col) {
-                        elCell.classList.add('error');
+
+        this.#_object.addEventListener('apiReady', () => {
+            this.#ws.send('getPuzzle', {
+                game_id: this.#gameID,
+                need_candidates: true,
+            });
+        }, {once: true});
+
+        this.#_object.addEventListener('api_getPuzzle', (e) => {
+            let body = e.detail.body;
+            this.#_object.querySelectorAll('.sud-row').forEach((_row, row) => {
+                _row.querySelectorAll('.sud-cll').forEach((_cell, col) => {
+                    this.#placeDigit(_cell, '0', true);
+                    let d = body.puzzle[row*9+col];
+                    if ('1' <= d && d <= '9') {
+                        this.#placeDigit(_cell, d, true);
+                        _cell.classList.add('hint');
+                    }
+                    if (body.candidates) {
+                        this.#setCandidatesFor(_cell, body.candidates[this.#stringifyPoint(row, col)]);
                     }
                 });
-                if (body.candidates) {
-                    setCandidatesFor(elCell, body.candidates[stringifyPoint(row, col)]);
-                }
             });
         });
-    });
 
-    // websocket
-    connectWs();
-    // setInterval(()=>{
-    //     if(!ws){
-    //         return;
-    //     }
-    //     ws.send(JSON.stringify({method: 'health', echo: ''+Math.floor(Math.random() * 1e9)}));
-    // }, 10000);
-
-    sudoku.addEventListener('apiReady', () => {
-        game_id = document.querySelector('#_game_id').textContent;
-        wsApi('getPuzzle', {
-            game_id: game_id,
-            need_candidates: true,
+        this.#_object.addEventListener('api_makeStep', (e) => {
+            let body = e.detail.body;
+            this.#_object.querySelectorAll('.sud-cll').forEach((_cell) => {
+                _cell.classList.remove('error');
+            });
+            if (body.win) {
+                this.#isWin = true;
+                alert('win'); // TODO
+                return;
+            }
+            body.errors = this.#parsePoints(body.errors);
+            this.#_object.querySelectorAll('.sud-row').forEach((_row, row) => {
+                _row.querySelectorAll('.sud-cll').forEach((_cell, col) => {
+                    body.errors.forEach((p) => {
+                        if (p.row === row && p.col === col) {
+                            _cell.classList.add('error');
+                        }
+                    });
+                    if (body.candidates) {
+                        this.#setCandidatesFor(_cell, body.candidates[this.#stringifyPoint(row, col)]);
+                    }
+                });
+            });
         });
-    }, {once: true});
-}, false);
+    }
 
-let setCandidatesFor = (cell, cands) => {
-    if (!cell || !cands) return;
-    cell.querySelectorAll('.cands .crow').forEach((crow, row) => {
-        crow.querySelectorAll('.ccell').forEach((ccell, col) => {
-            if (cands.includes(ccell.textContent.charCodeAt(0)-'0'.charCodeAt(0))) {
-                ccell.classList.remove('hidden');
+    dispatchEvent(ce) {
+        this.#_object.dispatchEvent(ce);
+    }
+
+    connectWS(ws) {
+        this.#ws = ws;
+    }
+
+    #placeDigit(_cell, digit, notMakeStep) {
+        if (this.#isWin) return;
+        if (!_cell || _cell.classList.contains('hint')) return;
+        let _digit = _cell.querySelector('.sud-dgt');
+        let oldDigit = _digit.textContent===''?'0':_digit.textContent;
+        _cell.classList.remove('is-dgt', 'is-cnd');
+        if (digit === '0') {
+            _digit.textContent = '';
+            _cell.classList.add('is-cnd');
+        } else {
+            _digit.textContent = digit;
+            _cell.classList.add('is-dgt');
+        }
+        if (!notMakeStep && oldDigit !== digit) this.#apiMakeStep();
+    }
+
+    #placeDigitInActive(digit, notMakeStep) {
+        if (this.#isWin) return;
+        this.#placeDigit(this.#_object.querySelector('.sud-cll.active'), digit, notMakeStep);
+    }
+
+    #setCandidatesFor(_cell, cands) {
+        if (!_cell || !cands) return;
+        _cell.querySelectorAll('.sud-cnd span').forEach((_span) => {
+            if (cands.includes(_span.textContent.charCodeAt(0)-'0'.charCodeAt(0))) {
+                _span.classList.remove('hidden');
             } else {
-                ccell.classList.add('hidden');
+                _span.classList.add('hidden');
             }
         });
-    });
-}
-
-let setActive = (elCell, dir) => {
-    if (!elCell) {
-        elCell = sudoku.querySelectorAll('.row').item(9/2).querySelectorAll('.cell').item(9/2);
-        dir = undefined;
-        if (!elCell) return;
     }
-    let elRow = elCell.closest('.row');
-    if (dir) {
+
+    #setActive(_cell, dir) {
+        if (!_cell) {
+            _cell = this.#_object.querySelectorAll('.sud-row').item(9/2).querySelectorAll('.sud-cll').item(9/2);
+            dir = undefined;
+            if (!_cell) return;
+        }
+        let _row = _cell.closest('.sud-row');
         switch (dir) {
             case 'up':
-                let prev = elRow.previousElementSibling;
-                if (!prev) return;
-                elCell = prev.querySelectorAll('.cell').item(getIndex(elCell));
+                let _prev = _row.previousElementSibling;
+                if (!_prev) return;
+                _cell = _prev.querySelectorAll('.sud-cll').item(this.#getIndex(_cell));
                 break;
             case 'right':
-                elCell = elCell.nextElementSibling; break;
+                _cell = _cell.nextElementSibling; break;
             case 'down':
-                let next = elRow.nextElementSibling;
-                if (!next) return;
-                elCell = next.querySelectorAll('.cell').item(getIndex(elCell));
+                let _next = _row.nextElementSibling;
+                if (!_next) return;
+                _cell = _next.querySelectorAll('.sud-cll').item(this.#getIndex(_cell));
                 break;
             case 'left':
-                elCell = elCell.previousElementSibling; break;
+                _cell = _cell.previousElementSibling; break;
         }
+        if (!_cell) return;
+        let isAlready = _cell.classList.contains('active');
+        this.#_object.querySelectorAll('.sud-cll.active').forEach((_active) => {
+            _active.classList.remove('active');
+        });
+        if (!isAlready) _cell.classList.add('active');
     }
-    if (!elCell) return;
-    let isAlreadyActive = elCell.classList.contains('active');
-    sudoku.querySelectorAll('.cell.active').forEach((active) => {
-        active.classList.remove('active');
-    });
-    if (!isAlreadyActive) elCell.classList.add('active');
-}
 
-function getIndex(node) {
-    let index = 0;
-    while (node = node.previousElementSibling) {
-        index++;
+    #apiMakeStep() {
+        let state = '';
+        this.#_object.querySelectorAll('.sud-dgt').forEach((_dgt) => {
+            let val = _dgt.textContent;
+            if (val === '') val = '.';
+            state += val;
+        });
+        this.#ws.send('makeStep', {
+            game_id: this.#gameID,
+            state: state,
+            need_candidates: true,
+        })
     }
-    return index;
-}
 
-let connectWs = () => {
-    ws = new WebSocket('ws://'+location.host+'/ws');
-    ws.onopen = (e) => {
-        console.log('ws: open connection');
-        sudoku.dispatchEvent(new CustomEvent('apiReady'));
-    }
-    ws.onclose = (e) => {
-        console.log('ws: close connection');
-        ws = undefined;
-        // reconnect
-        setTimeout(connectWs, 3000);
-    }
-    ws.onmessage = (e) => {
-        console.log('ws: receive message:', e.data);
-        let msg = JSON.parse(e.data);
-        if (!msg.method) return;
-        if (msg.error) {
-            console.error('api', msg.method, 'error:', msg.error);
-            return;
+    #getIndex(_node) {
+        let index = 0;
+        while (_node = _node.previousElementSibling) {
+            index++;
         }
-        sudoku.dispatchEvent(new CustomEvent('api_'+msg.method, {detail: msg}));
+        return index;
     }
-    ws.onerror = (e) => {
-        console.error('ws: error '+e.code+':', e.reason, e);
-        ws.close();
+
+    #parsePoints(points) {
+        let out = [];
+        if (!points) return out;
+        points.forEach((p) => {
+            out = out.concat([{
+                row: p[0].charCodeAt(0)-'a'.charCodeAt(0),
+                col: parseInt(p[1])-1,
+            }]);
+        });
+        return out;
     }
-}
 
-let apiMakeStep = () => {
-    let state = '';
-    sudoku.querySelectorAll('.cell .digit').forEach((cell) => {
-        let val = cell.textContent;
-        if (val === '') val = '.';
-        state += val;
-    });
-    wsApi('makeStep', {
-        game_id: game_id,
-        state: state,
-        need_candidates: true,
-    })
-}
-
-let wsApi = (method, body) => {
-    if (!body || !method) return;
-    let msg = JSON.stringify({
-        method: method,
-        body: body,
-    });
-    console.log('ws: send message:', msg);
-    ws.send(msg);
-}
-
-let parsePoints = (points) => {
-    if (!points) return [];
-    let out = [];
-    points.forEach((p) => {
-        out = out.concat([{
-            row: p[0].charCodeAt(0)-'a'.charCodeAt(0),
-            col: parseInt(p[1])-1,
-        }]);
-    });
-    return out;
-}
-
-let stringifyPoint = (row, col) => {
-    return String.fromCharCode((row)+'a'.charCodeAt(0)) + (col+1);
+    #stringifyPoint(row, col) {
+        return String.fromCharCode((row)+'a'.charCodeAt(0)) + (col+1);
+    }
 }
