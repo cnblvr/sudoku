@@ -6,6 +6,7 @@ import (
 	"github.com/cnblvr/sudoku/data"
 	"math/rand"
 	"strconv"
+	"time"
 )
 
 type Generator struct{}
@@ -14,22 +15,10 @@ func (Generator) Type() data.SudokuType {
 	return data.SudokuClassic
 }
 
-func getMinMaxHintsOfLevel(level data.SudokuLevel) (int, int) {
-	switch level {
-	case data.SudokuRandomEasy:
-		return 33, 37
-	case data.SudokuRandomMedium:
-		return 28, 32
-	case data.SudokuRandomHard:
-		return 23, 27
-	default:
-		return 0, 0
-	}
-}
-
 // Generate returns puzzle and solution.
 // seed is used to create a unique puzzle.
-func (Generator) Generate(ctx context.Context, seed int64, level data.SudokuLevel) (string, string, error) {
+func (Generator) Generate(ctx context.Context, seed int64, generated chan<- data.GeneratedSudoku) {
+	defer close(generated)
 	// randomizer for full puzzle generation
 	rnd := rand.New(rand.NewSource(seed))
 
@@ -67,29 +56,63 @@ func (Generator) Generate(ctx context.Context, seed int64, level data.SudokuLeve
 		copy(puzzle[row], solution[row])
 	}
 
-	min, max := getMinMaxHintsOfLevel(level)
-	needHints := (rnd.Int() % (max - min + 1)) + min
-	rndPoints := sudokuRandomPoints(rnd)
+	needHints := make(map[int]data.SudokuLevel)
+	for _, level := range []data.SudokuLevel{data.SudokuRandomEasy, data.SudokuRandomMedium} {
+		min, max := level.GetMinMaxHintsOfLevel()
+		hints := (rnd.Int() % (max - min + 1)) + min
+		needHints[hints] = level
+	}
+
 	removes := 0
+	saveHardIfMatched := func() {
+		if _, max := data.SudokuRandomHard.GetMinMaxHintsOfLevel(); max >= removes-81 {
+			generated <- data.GeneratedSudoku{
+				Puzzle:   puzzle.String(),
+				Solution: solution.String(),
+				Level:    data.SudokuRandomHard,
+			}
+		}
+	}
+
+	rndPoints := sudokuRandomPoints(rnd)
 	for _, p := range rndPoints {
+		//log.Printf("point #%d: %v; hints %d", idx+1, p, 81-removes)
+		select {
+		case <-ctx.Done():
+			saveHardIfMatched()
+			return
+		default:
+		}
 		digit := puzzle[p.Row][p.Col]
 		if digit == 0 {
 			continue
 		}
 		puzzle[p.Row][p.Col] = 0
-		if len(puzzle.solveBruteForce(2)) != 1 {
-			puzzle[p.Row][p.Col] = digit
-			continue
-		} else {
+		if func() bool {
+			ctxSolve, cancelSolve := context.WithTimeout(context.Background(), 20*time.Minute)
+			defer cancelSolve()
+			solutions, err := puzzle.solveBruteForce(ctxSolve, 2)
+			if len(solutions) != 1 || err != nil {
+				puzzle[p.Row][p.Col] = digit
+				return true
+			}
 			removes++
+			return false
+		}() {
+			continue
 		}
 
-		if needHints >= 81-removes {
-			break
+		if level, ok := needHints[81-removes]; ok {
+			generated <- data.GeneratedSudoku{
+				Puzzle:   puzzle.String(),
+				Solution: solution.String(),
+				Level:    level,
+			}
 		}
 	}
 
-	return puzzle.String(), solution.String(), nil
+	saveHardIfMatched()
+	return
 }
 
 func (Generator) GetCandidates(ctx context.Context, puzzle string) map[data.Point][]int8 {

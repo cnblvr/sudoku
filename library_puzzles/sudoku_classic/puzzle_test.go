@@ -1,6 +1,7 @@
 package sudoku_classic
 
 import (
+	"context"
 	"encoding/json"
 	"testing"
 	"time"
@@ -34,11 +35,13 @@ func Test_sudokuPuzzle_findCandidates(t *testing.T) {
 
 func Test_sudokuPuzzle_solveBruteForce(t *testing.T) {
 	tests := []struct {
-		name     string
-		p        string
-		breakOn  int
-		want     []string
-		duration bool
+		name       string
+		ctxTimeout func(ctx context.Context) (context.Context, context.CancelFunc)
+		p          string
+		breakOn    int
+		want       []string
+		wantErr    bool
+		duration   bool
 	}{
 		{
 			name: "#1",
@@ -64,6 +67,31 @@ func Test_sudokuPuzzle_solveBruteForce(t *testing.T) {
 		{
 			name: "#4",
 			p:    "..........4....67..8...24...63.7..1.9.......3.1..9.52...72...8..26....35...4.9...",
+			want: []string{
+				"172645398345981672689732451263574819958126743714398526597263184426817935831459267",
+				"172946358349185672685732491263574819958621743714398526597263184426817935831459267",
+				"172946358349815672685732491263574819958621743714398526597263184426187935831459267",
+				"175846392342915678689732451263574819958621743714398526597263184426187935831459267",
+				"179846352342915678685732491263574819958621743714398526597263184426187935831459267",
+				"672145398145983672389762451263574819958621743714398526597236184426817935831459267",
+			},
+			duration: true,
+		},
+		{
+			name: "#4 timeout",
+			ctxTimeout: func(ctx context.Context) (context.Context, context.CancelFunc) {
+				return context.WithTimeout(ctx, time.Second)
+			},
+			p:        "..........4....67..8...24...63.7..1.9.......3.1..9.52...72...8..26....35...4.9...",
+			wantErr:  true,
+			duration: true,
+		},
+		{
+			name: "#4 timeout not reached",
+			ctxTimeout: func(ctx context.Context) (context.Context, context.CancelFunc) {
+				return context.WithTimeout(ctx, 90*time.Second)
+			},
+			p: "..........4....67..8...24...63.7..1.9.......3.1..9.52...72...8..26....35...4.9...",
 			want: []string{
 				"172645398345981672689732451263574819958126743714398526597263184426817935831459267",
 				"172946358349185672685732491263574819958621743714398526597263184426817935831459267",
@@ -118,10 +146,20 @@ func Test_sudokuPuzzle_solveBruteForce(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			ctx := context.Background()
+			if tt.ctxTimeout != nil {
+				var cancel context.CancelFunc
+				ctx, cancel = tt.ctxTimeout(ctx)
+				defer cancel()
+			}
 			start := time.Now()
-			solutions := sudokuPuzzleFromString(tt.p).solveBruteForce(tt.breakOn)
+			solutions, err := sudokuPuzzleFromString(tt.p).solveBruteForce(ctx, tt.breakOn)
 			if tt.duration {
 				t.Logf("solve time: %s", time.Since(start).Truncate(time.Microsecond).String())
+			}
+			if (err != nil) != tt.wantErr {
+				t.Errorf("want err %v. got err: %v", tt.wantErr, err)
+				return
 			}
 			solutionsMap := make(map[string]struct{})
 			for _, s := range solutions {

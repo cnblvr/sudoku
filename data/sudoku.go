@@ -16,7 +16,7 @@ var (
 
 type SudokuGenerator interface {
 	Type() SudokuType
-	Generate(ctx context.Context, seed int64, level SudokuLevel) (string, string, error)
+	Generate(ctx context.Context, seed int64, generated chan<- GeneratedSudoku)
 	GetCandidates(ctx context.Context, puzzle string) map[Point][]int8
 	FindUserErrors(ctx context.Context, userState string) []Point
 }
@@ -65,6 +65,12 @@ type SudokuStep struct {
 	Value int8  `json:"value"`
 }
 
+type GeneratedSudoku struct {
+	Puzzle   string
+	Solution string
+	Level    SudokuLevel
+}
+
 type SudokuType string
 
 const (
@@ -78,6 +84,19 @@ const (
 	SudokuRandomMedium SudokuLevel = "r_medium"
 	SudokuRandomHard   SudokuLevel = "r_hard"
 )
+
+func (l SudokuLevel) GetMinMaxHintsOfLevel() (int, int) {
+	switch l {
+	case SudokuRandomEasy:
+		return 33, 37
+	case SudokuRandomMedium:
+		return 28, 32
+	case SudokuRandomHard:
+		return 17, 27
+	default:
+		return 81, 81
+	}
+}
 
 func (l SudokuLevel) String() string {
 	return string(l)

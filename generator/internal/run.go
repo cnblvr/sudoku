@@ -5,6 +5,7 @@ import (
 	"github.com/cnblvr/sudoku/data"
 	"github.com/rs/zerolog/log"
 	"math/rand"
+	"time"
 )
 
 func (srv *Service) Run() error {
@@ -31,20 +32,20 @@ func (srv *Service) GenerateSudokuByRandomSeed() error {
 		}
 	}
 
-	// Generate level
-	levels := []data.SudokuLevel{data.SudokuRandomEasy, data.SudokuRandomMedium, data.SudokuRandomHard}
-	level := levels[rand.Int()%len(levels)]
-
 	// Generate sudoku
-	puzzle, solution, err := srv.generator.Generate(ctx, seed, level)
-
-	// Save sudoku
-	sudoku, err := srv.sudokuRepository.CreateSudoku(ctx, srv.generator.Type(), seed, level, puzzle, solution)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to create new sudoku in db")
-		return err
+	ctxGen, cancelGen := context.WithTimeout(ctx, time.Hour)
+	defer cancelGen()
+	generatedChan := make(chan data.GeneratedSudoku, 3)
+	go srv.generator.Generate(ctxGen, seed, generatedChan)
+	for generated := range generatedChan {
+		// Save sudoku
+		sudoku, err := srv.sudokuRepository.CreateSudoku(ctx, srv.generator.Type(), seed, generated.Level, generated.Puzzle, generated.Solution)
+		if err != nil {
+			log.Error().Err(err).Msg("failed to create new sudoku in db")
+			return err
+		}
+		log.Info().Int64("id", sudoku.ID).Str("sudoku_level", generated.Level.String()).Msg("new sudoku created and saved")
 	}
-	log.Info().Int64("id", sudoku.ID).Str("sudoku_level", level.String()).Msg("new sudoku created and saved")
 
 	return nil
 }

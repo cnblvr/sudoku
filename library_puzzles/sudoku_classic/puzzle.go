@@ -1,6 +1,8 @@
 package sudoku_classic
 
 import (
+	"context"
+	"fmt"
 	"github.com/cnblvr/sudoku/data"
 )
 
@@ -167,12 +169,21 @@ func sudokuPuzzleFromString(str string) sudokuPuzzle {
 	return out
 }
 
-func (p sudokuPuzzle) solveBruteForce(breakOn int) []sudokuPuzzle {
+var errTimeoutBreak = fmt.Errorf("timeout break")
+
+func (p sudokuPuzzle) solveBruteForce(ctx context.Context, breakOn int) ([]sudokuPuzzle, error) {
 	var solutions []sudokuPuzzle
 	var recursion func(p sudokuPuzzle)
+	timeoutBreak := false
 	recursion = func(p sudokuPuzzle) {
-		if breakOn > 0 && breakOn <= len(solutions) {
+		if timeoutBreak || (breakOn > 0 && breakOn <= len(solutions)) {
 			return
+		}
+		select {
+		case <-ctx.Done():
+			timeoutBreak = true
+			return
+		default:
 		}
 		candidates := p.findCandidates()
 		for row := 0; row < 9; row++ {
@@ -198,8 +209,10 @@ func (p sudokuPuzzle) solveBruteForce(breakOn int) []sudokuPuzzle {
 
 	puzzle := p.clone()
 	recursion(puzzle)
-
-	return solutions
+	if timeoutBreak {
+		return nil, errTimeoutBreak
+	}
+	return solutions, nil
 }
 
 func (p sudokuPuzzle) forEach(fn func(p data.Point, v int8, _break *bool), excludeCols ...int) {

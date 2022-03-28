@@ -3,9 +3,9 @@ package sudoku_classic
 import (
 	"context"
 	"github.com/cnblvr/sudoku/data"
-	"github.com/rs/zerolog"
-	"math/rand"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestTransformations(t *testing.T) {
@@ -245,56 +245,18 @@ func TestTransformations(t *testing.T) {
 	}
 }
 
-// Checking the puzzle generator for the uniqueness of the seed.
-func TestSeed(t *testing.T) {
-	seeds := []int64{
-		0,
-		1,
-		238978,
-		rand.Int63(),
-	}
-	for _, seed := range seeds {
-		ctx := context.Background()
-		puzzle, solution := Generator{}.Generate(ctx, seed)
-		for i := 0; i < 5; i++ {
-			ctx := context.Background()
-			newPuzzle, newSolution := Generator{}.Generate(ctx, seed)
-			if newPuzzle != puzzle {
-				t.Errorf("seed generate various puzzles")
-				continue
-			}
-			if newSolution != solution {
-				t.Errorf("seed generate various solutions")
-				continue
-			}
+func TestGenerateHardestSudoku(t *testing.T) {
+	t.SkipNow()
+	for seed := int64(1000); seed <= 1100; seed++ {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Hour)
+		defer cancel()
+		ch := make(chan data.GeneratedSudoku, 3)
+		start := time.Now()
+		go Generator{}.Generate(ctx, seed, ch)
+		for sudoku := range ch {
+			t.Logf("seed: %d; level: %s; num of hints: %d\npuzzle:   %s\nsolution: %s",
+				seed, sudoku.Level, 81-strings.Count(sudoku.Puzzle, "."), sudoku.Puzzle, sudoku.Solution)
 		}
+		t.Logf("generate time: %s", time.Since(start).Truncate(time.Microsecond).String())
 	}
 }
-
-// Checking the uniqueness of puzzles for many seeds.
-// TODO: increase the uniqueness of puzzles
-func TestUnique(t *testing.T) {
-	zerolog.SetGlobalLevel(zerolog.InfoLevel)
-	unique := make(map[string]int64)
-	for i := int64(0); i < 100; i++ {
-		ctx := context.Background()
-		puzzle, _ := Generator{}.Generate(ctx, i)
-		if seed, exists := unique[puzzle]; exists {
-			t.Errorf("seeds %d and %d generate same puzzles", seed, i)
-			continue
-		}
-		unique[puzzle] = i
-	}
-}
-
-//func TestSimpleGeneration(t *testing.T) {
-//	const seed = 2
-//
-//	s := NewSudoku(seed)
-//	t.Logf("base     %s\n%s", s.board.String(), s.board.debug())
-//	t.Logf("%s\n%s", s.puzzle.String(), s.puzzle.debug())
-//	t.Logf("count of hints = %d", s.puzzle.CountHints())
-//
-//}
-//
-//
