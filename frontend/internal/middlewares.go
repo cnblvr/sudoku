@@ -34,7 +34,7 @@ func (srv *Service) MiddlewareCookies(next http.Handler) http.Handler {
 func (srv *Service) MiddlewareMustBeAuthorized(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		auth, log := getAuth(ctx), getLogger(ctx)
+		auth, log := data.GetAuth(ctx), getLogger(ctx)
 		redirect := func(endpoint string) {
 			deleteAuthCookie(w)
 			http.Redirect(w, r, endpoint, http.StatusSeeOther)
@@ -70,16 +70,4 @@ func getLogger(ctx context.Context) zerolog.Logger {
 		return log.Logger
 	}
 	return logger
-}
-
-func getAuth(ctx context.Context) *data.Auth {
-	val := ctx.Value("auth")
-	if val == nil {
-		return &data.Auth{}
-	}
-	auth, ok := val.(*data.Auth)
-	if !ok {
-		return &data.Auth{}
-	}
-	return auth
 }

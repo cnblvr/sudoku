@@ -3,6 +3,7 @@ package frontend
 import (
 	"context"
 	"encoding/json"
+	"github.com/cnblvr/sudoku/data"
 	"github.com/gorilla/websocket"
 	"github.com/rs/zerolog/log"
 	"net/http"
@@ -17,7 +18,7 @@ type websocketMessage struct {
 
 func (srv *Service) HandleWebsocket(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	auth, log := getAuth(ctx), getLogger(ctx)
+	auth, log := data.GetAuth(ctx), getLogger(ctx)
 	if !auth.IsAuthorized {
 		log.With().Bool("anonymous", true).Logger()
 	} else {

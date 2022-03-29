@@ -59,7 +59,8 @@ func NewService() (*Service, error) {
 	}
 
 	// Load templates
-	srv.templates, err = template.ParseFS(templates.Templates, append(templates.Common(), "*.gohtml")...)
+	srv.templates, err = template.New("").Funcs(templates.CommonFunctions).
+		ParseFS(templates.Templates, append(templates.Common(), "*.gohtml")...)
 	if err != nil {
 		log.Error().Err(err).Msg("failed to parse FS of templates")
 		return nil, err

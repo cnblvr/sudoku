@@ -45,11 +45,11 @@ func (srv *Service) HandleSudoku(w http.ResponseWriter, r *http.Request) {
 	// TODO sudokuSession.Sudoku().AddUserID()
 
 	args := templates.Args{
-		Header: templates.Header{
+		Header: templates.NewHeader(ctx, templates.Header{
 			Title: fmt.Sprintf("sudoku"),
 			Css:   []string{static.CssSudoku},
 			Js:    []string{static.JsSudoku, static.JsWs},
-		},
+		}),
 		Data:   d,
 		Footer: templates.Footer{},
 	}

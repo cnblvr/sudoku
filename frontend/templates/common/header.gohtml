@@ -21,9 +21,17 @@
 
         footer { display: flex; justify-content: flex-end; align-items: center; }
         .footer-item { margin: 5px 10px; }
-    </style>{{range $css := .Css}}
+    </style>{{with .CssInternal}}
+    <style>{{range $css := .}}
+        {{.}}{{end}}
+    </style>{{end}}{{range $css := .Css}}
     <link rel="stylesheet" href="/css/{{$css}}.css">{{end}}{{range $js := .Js}}
     <script src="/js/{{$js}}.js"></script>{{end}}
 </head>
-<body><!-- TODO nav -->
-{{end}}
+<body>
+<header>
+    <nav>{{range $nav := .Navigation}}
+        <a class="nav-item" href="{{$nav.Path}}">{{$nav.Label}}</a>{{end}}
+    </nav>
+</header>
+<main>{{end}}

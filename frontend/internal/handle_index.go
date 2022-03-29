@@ -2,6 +2,7 @@ package frontend
 
 import (
 	"fmt"
+	"github.com/cnblvr/sudoku/data"
 	"github.com/cnblvr/sudoku/frontend/templates"
 	"net/http"
 )
@@ -13,7 +14,7 @@ func (srv *Service) HandleIndex(w http.ResponseWriter, r *http.Request) {
 		Username string
 	}{}
 
-	auth, log := getAuth(ctx), getLogger(ctx)
+	auth, log := data.GetAuth(ctx), getLogger(ctx)
 	if auth.IsAuthorized {
 		var err error
 		user, err := srv.userRepository.GetUserByID(ctx, auth.ID)
@@ -25,9 +26,9 @@ func (srv *Service) HandleIndex(w http.ResponseWriter, r *http.Request) {
 	}
 
 	args := templates.Args{
-		Header: templates.Header{
+		Header: templates.NewHeader(ctx, templates.Header{
 			Title: fmt.Sprintf("index"),
-		},
+		}),
 		Data: d,
 		Auth: auth,
 	}

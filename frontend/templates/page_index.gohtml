@@ -4,9 +4,6 @@
     <label><input type="radio" name="level" value="r_easy">Easy</label>
     <label><input type="radio" name="level" value="r_medium" checked="checked">Medium</label>
     <label><input type="radio" name="level" value="r_hard">Hard</label>
-    <button type="submit">Play{{if not $auth.IsAuthorized}} as anonymous{{end}}</button>{{if not $auth.IsAuthorized}} or <a href="/login">log in</a> or <a href="/signup">sign up</a>{{end}}
+    <button type="submit">Play{{if not $auth.IsAuthorized}} as anonymous{{end}}</button>
 </form>
-{{if $auth.IsAuthorized}}<form action="/logout" method="get">
-    <button type="submit">Log out</button>
-</form>{{end}}
 {{template "footer" .Footer}}{{end}}

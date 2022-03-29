@@ -23,7 +23,7 @@ const (
 // HandleLogin is a handler of login page.
 func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	auth, log := getAuth(ctx), getLogger(ctx)
+	auth, log := data.GetAuth(ctx), getLogger(ctx)
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
@@ -88,9 +88,9 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 	// render of page
 	args := templates.Args{
-		Header: templates.Header{
+		Header: templates.NewHeader(ctx, templates.Header{
 			Title: fmt.Sprintf("login"),
-		},
+		}),
 		Data: d,
 	}
 	srv.executeTemplate(w, "page_login", args)
@@ -99,7 +99,7 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 // HandleLogout is a handler of logout.
 func (srv *Service) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	auth, log := getAuth(ctx), getLogger(ctx)
+	auth, log := data.GetAuth(ctx), getLogger(ctx)
 	deleteAuthCookie(w)
 	log.Debug().Str("redirect", data.EndpointIndex).Int64("id", auth.ID).Msg("client logged out")
 	http.Redirect(w, r, data.EndpointIndex, http.StatusSeeOther)
@@ -107,7 +107,7 @@ func (srv *Service) HandleLogout(w http.ResponseWriter, r *http.Request) {
 
 func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	auth, log := getAuth(ctx), getLogger(ctx)
+	auth, log := data.GetAuth(ctx), getLogger(ctx)
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
@@ -191,9 +191,9 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 
 	// render of page
 	args := templates.Args{
-		Header: templates.Header{
+		Header: templates.NewHeader(ctx, templates.Header{
 			Title: fmt.Sprintf("signup"),
-		},
+		}),
 		Data: d,
 	}
 	srv.executeTemplate(w, "page_signup", args)

@@ -6,6 +6,7 @@ class Sudoku {
     #isWin = false;
     #gameID;
     #ws;
+    #cndMode = false;
 
     constructor(param) {
         if (!param)
@@ -30,6 +31,7 @@ class Sudoku {
             }
         }
 
+        this.#_object.classList.add('sudoku');
         for (let row = 0; row < 9; row++) {
             let _row = document.createElement('div');
             _row.classList.add('sud-row');
@@ -44,7 +46,8 @@ class Sudoku {
                 let _cnd = document.createElement('div');
                 _cnd.classList.add('sud-cnd');
                 for (let idx = 1; idx <= 9; idx++) {
-                    let _cndItem = document.createElement('span');
+                    let _cndItem = document.createElement('div');
+                    _cndItem.classList.add('hidden');
                     _cndItem.textContent = ''+idx;
                     _cnd.appendChild(_cndItem);
                 }
@@ -55,22 +58,28 @@ class Sudoku {
         }
 
         if (this.#_keyboard) {
-            let createBtn = (label, event) => {
+            this.#_keyboard.classList.add('keyboard');
+            let createBtn = (label, event, id) => {
                 let btn = document.createElement('div');
                 btn.classList.add('kb-btn');
                 btn.textContent = label;
+                if (id) btn.id = id;
                 btn.addEventListener('click', event);
                 this.#_keyboard.appendChild(btn);
             }
             createBtn( 'c', (e) => {
-                console.log('TODO set candidates');
-            });
+                this.#toggleCandidateMode();
+            }, 'cnd-mode');
             createBtn( '⨯', (e) => {
-                this.#placeDigitInActive('0');
+                this.#cndMode?
+                    this.#toggleCandidateInActive('0'):
+                    this.#placeDigitInActive('0');
             });
             for (let digit = 1; digit <= 9; digit++) {
                 createBtn(digit, (e) => {
-                    this.#placeDigitInActive(''+digit);
+                    this.#cndMode?
+                        this.#toggleCandidateInActive(''+digit):
+                        this.#placeDigitInActive(''+digit);
                 });
             }
         }
@@ -82,6 +91,17 @@ class Sudoku {
                 });
             });
 
+            document.addEventListener('keydown', (e) => {
+                if (e.defaultPrevented) {
+                    return;
+                }
+                switch (e.code) {
+                    case 'ShiftLeft':
+                    case 'ShiftRight':
+                        this.#toggleCandidateMode(true);
+                        break;
+                }
+            });
             document.addEventListener('keyup', (e) => {
                 if (e.defaultPrevented) {
                     return;
@@ -96,10 +116,19 @@ class Sudoku {
                     case 'Numpad0':
                     case 'Space':
                     case 'Backspace':
-                        this.#placeDigitInActive('0');
+                        this.#cndMode?
+                            this.#toggleCandidateInActive('0'):
+                            this.#placeDigitInActive('0');
+                        break;
+                    case 'ShiftLeft':
+                    case 'ShiftRight':
+                        this.#toggleCandidateMode(false);
+                        break;
                 }
-                if ('1' <= e.key && e.key <= '9') {
-                    this.#placeDigitInActive(e.key);
+                if ('Digit1' <= e.code && e.code <= 'Digit9') {
+                    this.#cndMode?
+                        this.#toggleCandidateInActive(e.code.replace('Digit', '')):
+                        this.#placeDigitInActive(e.key);
                 }
             });
         }
@@ -185,11 +214,11 @@ class Sudoku {
 
     #setCandidatesFor(_cell, cands) {
         if (!_cell || !cands) return;
-        _cell.querySelectorAll('.sud-cnd span').forEach((_span) => {
-            if (cands.includes(_span.textContent.charCodeAt(0)-'0'.charCodeAt(0))) {
-                _span.classList.remove('hidden');
+        _cell.querySelectorAll('.sud-cnd div').forEach((_div) => {
+            if (cands.includes(_div.textContent.charCodeAt(0)-'0'.charCodeAt(0))) {
+                _div.classList.remove('hidden');
             } else {
-                _span.classList.add('hidden');
+                _div.classList.add('hidden');
             }
         });
     }
@@ -225,6 +254,34 @@ class Sudoku {
         if (!isAlready) _cell.classList.add('active');
     }
 
+    #toggleCandidateMode(state) {
+        if (state && typeof state === 'boolean') {
+            this.#cndMode = state;
+        } else {
+            this.#cndMode = !this.#cndMode;
+        }
+        let cndMode = document.querySelector('#cnd-mode');
+        if (this.#cndMode) cndMode.classList.add('active');
+        else cndMode.classList.remove('active');
+    }
+
+    #toggleCandidate(_cell, digit) {
+        if (this.#isWin) return;
+        if (!_cell || _cell.classList.contains('hint') || !_cell.classList.contains('is-cnd')) return;
+        _cell.querySelectorAll('.sud-cnd div').forEach((_cnd) => {
+            if (digit === '0') { _cnd.classList.add('hidden'); return; }
+            if (_cnd.textContent !== digit) return;
+            _cnd.classList.contains('hidden')?
+                _cnd.classList.remove('hidden'):
+                _cnd.classList.add('hidden');
+        });
+    }
+
+    #toggleCandidateInActive(digit) {
+        if (this.#isWin) return;
+        this.#toggleCandidate(this.#_object.querySelector('.sud-cll.active'), digit);
+    }
+
     #apiMakeStep() {
         let state = '';
         this.#_object.querySelectorAll('.sud-dgt').forEach((_dgt) => {
@@ -235,7 +292,7 @@ class Sudoku {
         this.#ws.send('makeStep', {
             game_id: this.#gameID,
             state: state,
-            need_candidates: true,
+            need_candidates: false,
         })
     }
 
