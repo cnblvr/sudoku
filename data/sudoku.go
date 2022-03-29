@@ -28,7 +28,7 @@ type SudokuRepository interface {
 	GetSudokuByID(ctx context.Context, id int64) (*Sudoku, error)
 	GetRandomSudokuByLevel(ctx context.Context, level SudokuLevel) (*Sudoku, error)
 
-	CreateSudokuGame(ctx context.Context, sudokuID, userID int64) (*SudokuGame, error)
+	CreateSudokuGame(ctx context.Context, sudokuID int64, auth UserOrToken) (*SudokuGame, error)
 	// Errors: ErrSudokuNotFound, ErrUserNotFound, unknown.
 	GetSudokuGameByID(ctx context.Context, id uuid.UUID) (*SudokuGame, error)
 	// Errors: ErrSudokuGameNotFound, unknown.
@@ -56,8 +56,25 @@ type Sudoku struct {
 type SudokuGame struct {
 	ID        uuid.UUID `json:"id"`
 	SudokuID  int64     `json:"sudoku_id"`
+	TokenID   uuid.UUID `json:"token_id"`
 	UserID    int64     `json:"user_id"`
 	CreatedAt DateTime  `json:"created_at"`
+}
+
+func (g SudokuGame) ValidateByUser(a *Auth) bool {
+	if g.UserID > 0 {
+		if g.UserID != a.UserID() {
+			return false
+		}
+	} else {
+		if a.IsEmptyTokenID() {
+			return false
+		}
+		if a.TokenID().String() != g.TokenID.String() {
+			return false
+		}
+	}
+	return true
 }
 
 type SudokuStep struct {

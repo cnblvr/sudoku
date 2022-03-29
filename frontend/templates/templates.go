@@ -46,7 +46,7 @@ func NewHeader(ctx context.Context, h Header) Header {
 		Navigation{Label: "Home", Path: data.EndpointIndex, Weight: 0},
 	)
 
-	auth := data.GetAuth(ctx)
+	auth := data.GetCtxAuth(ctx)
 	if auth.IsAuthorized {
 		h.Navigation = append(h.Navigation, Navigation{
 			Label:  "Log out",

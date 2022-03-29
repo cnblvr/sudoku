@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func (r *RedisRepository) CreateSudokuGame(ctx context.Context, sudokuID, userID int64) (*data.SudokuGame, error) {
+func (r *RedisRepository) CreateSudokuGame(ctx context.Context, sudokuID int64, auth data.UserOrToken) (*data.SudokuGame, error) {
 	conn := r.pool.Get()
 	defer conn.Close()
 
@@ -20,11 +20,6 @@ func (r *RedisRepository) CreateSudokuGame(ctx context.Context, sudokuID, userID
 		return nil, errors.Wrap(err, "failed to check existence sudoku")
 	} else if !ok {
 		return nil, errors.WithStack(data.ErrSudokuNotFound)
-	}
-	if ok, err := redis.Bool(conn.Do("EXISTS", keyUser(userID))); err != nil {
-		return nil, errors.Wrap(err, "failed to check existence user")
-	} else if !ok {
-		return nil, errors.WithStack(data.ErrUserNotFound)
 	}
 
 	seedID, err := redis.Int64(conn.Do("INCR", keyLastSudokuGameSeedID()))
@@ -36,8 +31,15 @@ func (r *RedisRepository) CreateSudokuGame(ctx context.Context, sudokuID, userID
 	game := &data.SudokuGame{
 		ID:        id,
 		SudokuID:  sudokuID,
-		UserID:    userID,
 		CreatedAt: data.DateTime{Time: time.Now().UTC()},
+	}
+	if userID := auth.UserID(); userID > 0 {
+		game.UserID = userID
+	} else {
+		if auth.IsEmptyTokenID() {
+			return nil, errors.Errorf("userID and tokenID is empty")
+		}
+		game.TokenID = auth.TokenID()
 	}
 
 	if err := r.putSudokuGame(ctx, conn, game); err != nil {

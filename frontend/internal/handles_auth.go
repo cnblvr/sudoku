@@ -23,7 +23,7 @@ const (
 // HandleLogin is a handler of login page.
 func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	auth, log := data.GetAuth(ctx), getLogger(ctx)
+	auth, log := data.GetCtxAuth(ctx), data.GetCtxLog(ctx)
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
@@ -59,9 +59,15 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 				log.Error().Err(err).Msg("failed to get user")
 				return ErrorInternalServerError
 			}
+			token, err := srv.userRepository.CreateToken(ctx, user.ID, 0)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to create token")
+				return ErrorInternalServerError
+			}
 			auth = &data.Auth{
 				IsAuthorized: true,
 				ID:           user.ID,
+				Token:        token.ID,
 			}
 			ok, err := srv.verifyPassword(password, user.PasswordSalt, user.PasswordHash)
 			if err != nil {
@@ -99,15 +105,18 @@ func (srv *Service) HandleLogin(w http.ResponseWriter, r *http.Request) {
 // HandleLogout is a handler of logout.
 func (srv *Service) HandleLogout(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	auth, log := data.GetAuth(ctx), getLogger(ctx)
+	auth, log := data.GetCtxAuth(ctx), data.GetCtxLog(ctx)
 	deleteAuthCookie(w)
+	if err := srv.userRepository.DeleteToken(ctx, auth.TokenID()); err != nil {
+		log.Warn().Err(err).Msg("failed to delete token")
+	}
 	log.Debug().Str("redirect", data.EndpointIndex).Int64("id", auth.ID).Msg("client logged out")
 	http.Redirect(w, r, data.EndpointIndex, http.StatusSeeOther)
 }
 
 func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	auth, log := data.GetAuth(ctx), getLogger(ctx)
+	auth, log := data.GetCtxAuth(ctx), data.GetCtxLog(ctx)
 	redirect := func(endpoint string) {
 		http.Redirect(w, r, endpoint, http.StatusSeeOther)
 	}
@@ -167,9 +176,15 @@ func (srv *Service) HandleSignup(w http.ResponseWriter, r *http.Request) {
 				log.Error().Err(err).Msg("failed to hash password")
 				return ErrorInternalServerError
 			}
+			token, err := srv.userRepository.CreateToken(ctx, user.ID, 0)
+			if err != nil {
+				log.Error().Err(err).Msg("failed to create token")
+				return ErrorInternalServerError
+			}
 			auth = &data.Auth{
 				IsAuthorized: true,
 				ID:           user.ID,
+				Token:        token.ID,
 			}
 			if err := srv.userRepository.UpdateUser(ctx, user); err != nil {
 				log.Error().Err(err).Msg("failed to update user")

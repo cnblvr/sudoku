@@ -7,9 +7,65 @@ import (
 	"github.com/cnblvr/sudoku/data"
 	"github.com/gomodule/redigo/redis"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 	"strings"
 	"time"
 )
+
+func (r *RedisRepository) CreateToken(ctx context.Context, userID int64, expiration time.Duration) (*data.TokenInfo, error) {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	if expiration == 0 {
+		expiration = data.DefaultTokenExpiration
+	}
+
+	token := &data.TokenInfo{
+		ID:         uuid.NewV4(),
+		Expiration: expiration,
+		UserID:     userID,
+	}
+	btsToken, err := json.Marshal(token)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to encode token info")
+	}
+	if _, err := conn.Do("SETEX", keyToken(token.ID), redisExpiration(token.Expiration), btsToken); err != nil {
+		return nil, errors.Wrap(err, "failed to set token info")
+	}
+	return token, nil
+}
+
+func (r *RedisRepository) GetToken(ctx context.Context, id uuid.UUID) (*data.TokenInfo, error) {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	btsToken, err := redis.Bytes(conn.Do("GET", keyToken(id)))
+	switch err {
+	case nil:
+	case redis.ErrNil:
+		return nil, errors.WithStack(data.ErrTokenNotFound)
+	default:
+		return nil, errors.Wrap(err, "failed to get token info")
+	}
+	var token data.TokenInfo
+	if err := json.Unmarshal(btsToken, &token); err != nil {
+		return nil, errors.Wrap(err, "failed to decode token info")
+	}
+	if _, err := conn.Do("EXPIRE", keyToken(id), redisExpiration(token.Expiration)); err != nil {
+		return nil, errors.Wrap(err, "failed to set expiration on token info")
+	}
+	return &token, nil
+}
+
+func (r *RedisRepository) DeleteToken(ctx context.Context, id uuid.UUID) error {
+	conn := r.pool.Get()
+	defer conn.Close()
+
+	if _, err := conn.Do("DEL", keyToken(id)); err != nil {
+		return errors.Wrap(err, "failed to delete token info")
+	}
+	return nil
+}
 
 func (r *RedisRepository) CreateUser(ctx context.Context, username string) (*data.User, error) {
 	conn := r.pool.Get()
@@ -166,6 +222,10 @@ func (r *RedisRepository) occupyUsername(ctx context.Context, conn redis.Conn, o
 		return errors.Wrap(err, "failed to unregister old username")
 	}
 	return nil
+}
+
+func keyToken(id uuid.UUID) string {
+	return fmt.Sprintf("token:%s", id.String())
 }
 
 func keyLastUserID() string {

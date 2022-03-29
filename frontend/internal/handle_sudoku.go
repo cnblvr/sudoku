@@ -12,12 +12,13 @@ import (
 
 const (
 	ErrorSudokuNotFound = "Sudoku not found."
+	ErrorAccessDenied   = "Access denied."
 )
 
 // HandleSudoku renders page with puzzle.
 func (srv *Service) HandleSudoku(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	log := getLogger(ctx)
+	auth, log := data.GetCtxAuth(ctx), data.GetCtxLog(ctx)
 	var d struct {
 		GameID       string
 		ErrorMessage string
@@ -37,6 +38,9 @@ func (srv *Service) HandleSudoku(w http.ResponseWriter, r *http.Request) {
 		if sudokuGame, err = srv.sudokuRepository.GetSudokuGameByID(ctx, gameID); err != nil {
 			log.Warn().Err(err).Msgf("sudoku session '%s' not found", gameID.String())
 			return ErrorSudokuNotFound
+		}
+		if !sudokuGame.ValidateByUser(auth) {
+			return ErrorAccessDenied
 		}
 		d.GameID = sudokuGame.ID.String()
 		return ""

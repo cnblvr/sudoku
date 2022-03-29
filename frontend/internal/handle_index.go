@@ -14,7 +14,7 @@ func (srv *Service) HandleIndex(w http.ResponseWriter, r *http.Request) {
 		Username string
 	}{}
 
-	auth, log := data.GetAuth(ctx), getLogger(ctx)
+	auth, log := data.GetCtxAuth(ctx), data.GetCtxLog(ctx)
 	if auth.IsAuthorized {
 		var err error
 		user, err := srv.userRepository.GetUserByID(ctx, auth.ID)

@@ -8,7 +8,7 @@ import (
 // HandleSudokuCreate is a puzzle generator handler/page(TODO).
 func (srv *Service) HandleSudokuCreate(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	auth, log := data.GetAuth(ctx), getLogger(ctx)
+	auth, log := data.GetCtxAuth(ctx), data.GetCtxLog(ctx)
 
 	var sudokuGame *data.SudokuGame
 	status := func() int {
@@ -17,7 +17,7 @@ func (srv *Service) HandleSudokuCreate(w http.ResponseWriter, r *http.Request) {
 			log.Error().Err(err).Msg("failed to get sudoku")
 			return http.StatusInternalServerError
 		}
-		sudokuGame, err = srv.sudokuRepository.CreateSudokuGame(ctx, sudoku.ID, auth.ID)
+		sudokuGame, err = srv.sudokuRepository.CreateSudokuGame(ctx, sudoku.ID, auth)
 		if err != nil {
 			log.Error().Err(err).Msg("failed to create new sudoku game")
 			return http.StatusInternalServerError
